@@ -23,6 +23,10 @@ describe("iter library entry point", function() {
     it("should return iterable given object", function() {
         expect(iter({ foo: 1, bar: 2 })).toBeDefined();
     });
+
+    it("should return iterable given function", function() {
+        expect(iter(function() {})).toBeDefined();
+    });
 });
 
 describe("iterable", function() {
@@ -43,6 +47,19 @@ describe("iterable", function() {
         it("should return new iterator for each iterator() call", function() {
             var it = iterable.iterator();
             var it2 = iterable.iterator();
+
+            expect(it).not.toBe(it2);
+        });
+    });
+
+    describe("function iterable", function() {
+        var iterable = iter(function() {
+            return 1;
+        });
+
+        it("should return new iterator for each iterator() call", function() {
+            var it = iterable.iterator(),
+                it2 = iterable.iterator();
 
             expect(it).not.toBe(it2);
         });
@@ -154,6 +171,45 @@ describe("iterator", function() {
                 ;
 
             expect(fooIterator.current()).toEqual({ key: 'foo', value: 1 });
+        });
+    });
+
+    describe("function iterator", function() {
+        var i, foo;
+
+        beforeEach(function() {
+            i = 0;
+
+            foo = iter(function() {
+                i += 1;
+                return (i < 3 ? i : undefined);
+            }).iterator();
+        });
+
+        it("current() should throw exception before call to next()", function() {
+            expect(function() { foo.current(); }).toThrow();   
+        });
+    
+        it("successive calls to next(),current() should return values returned by successive " +
+           "calls to iter function", function() {
+            foo.next();
+            expect(foo.current()).toBe(1);
+
+            foo.next();
+            expect(foo.current()).toBe(2);
+        });
+
+        it("next() should return false if function returns undefined, true otherwise", function() {
+            expect(foo.next()).toBe(true);
+            expect(foo.next()).toBe(true);
+            expect(foo.next()).toBe(false);
+        });
+
+        it("current() should not change value if next() returns false", function() {
+            while(foo.next())
+                ;
+
+            expect(foo.current()).toBe(2);
         });
     });
 });
