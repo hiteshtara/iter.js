@@ -85,3 +85,52 @@ describe("toArray", function() {
         expect(Array.isArray(result)).toBe(true);
     });
 });
+
+describe("map", function() {
+    it("returns empty sequence given empty sequence", function() {
+        var result = iter([])
+            .map(function(x) { return x; })
+            .toArray();
+
+        expect(result).toEqual([]);
+    });
+
+    it("given map function maps sequence elements using that function", function() {
+        var result = iter([1,2,3])
+            .map(function(x) { return x*x; })
+            .toArray();
+
+        expect(result).toEqual([1,4,9]);
+    });
+
+    it("iterator() call reaturns always new iterator", function() {
+        var array = [1,2];
+
+        var iterator = iter(array)
+            .map(function(x) { return x; });
+
+        var result1 = iterator.toArray();
+        
+        array.push(7);
+        var result2 = iterator.toArray();
+
+        expect(result1).toEqual([1,2]);
+        expect(result2).toEqual([1,2,7]);
+    });
+
+    it("string can be used to select property from object", function() {
+        var array = [{foo: 1, bar: 2}, { foo: 10, bar: 20 }];
+
+        var result = iter(array).map('foo').toArray();
+
+        expect(result).toEqual([1, 10]);
+    });
+
+    it("array of strings can be used to select many properties from sequence objects", function() {
+        var array = [{ foo: 1, bar: 2, nyu: 3 }, { foo: 10, bar: 20, nyu: 30 }];
+
+        var result = iter(array).map('foo', 'bar').toArray();
+
+        expect(result).toEqual([{ foo: 1, bar: 2 }, { foo: 10, bar: 20 }]);
+    });
+});

@@ -33,6 +33,60 @@
         }
     };
 
+    var jsIdentifierRegex = /^[a-z_][a-z0-9_]*$/i;
+
+    var isPropertySelector = function(obj) {
+        return obj && (typeof obj === "string") && jsIdentifierRegex.test(obj);
+    };
+
+    var createPropertySelectorFunction = function(propertyName) {
+        return eval('(function($) { return ($["' + propertyName + '"]); })');
+    };
+
+    var isPropertyMultiselector = function(obj) {
+        if (!obj || !Array.isArray(obj))
+            return false;
+
+        for (var i = 0; i < obj.length; i += 1) {
+            if (!isPropertySelector(obj[i]))
+                return false;
+        }
+
+        return true;
+    };
+
+    var createPropertyMultiselectorFunciton = function(propertyNames) {
+        // { "foo": $["foo"], "bar": $["bar"] }
+        var selected = '{ ';
+        var first = true;
+
+        propertyNames.forEach(function(property) {
+            if (!first) {
+                selected += ", ";
+            }
+            first = false;
+
+            selected += '"' + property + '": ' + '$["' + property + '"]';
+        });
+
+        selected += " }";
+
+        return eval('(function($){ return (' + selected + '); })');
+    };
+
+    var throwIfNotQuickOrFunction = function(argValue, argName, funcName) {
+        if (!argValue || (typeof argValue !== "string" && typeof argValue !== "function")) {
+            throw new Error(
+                'Invalid value of ' + funcName + ' ' +
+                'argument ' + argValue + '. ' +
+                'Valid values are quick expressions and functions');
+        }
+    };
+
+    var argsToArray = function(args) {
+        return Array.prototype.slice.call(args);
+    };
+
     var ArrayIterator = function($array) {
         this.$$index = -1;
         this.$$array = $array;
@@ -195,6 +249,8 @@
     Iterable.prototype.filter = function(pred, $this) {
         var that = this;
 
+        throwIfNotQuickOrFunction(pred, 'pred', 'filter');
+
         if (typeof pred === "string") {
             pred = quickToFunction(pred, { boolResult: true });
         }
@@ -207,9 +263,53 @@
         });
     };
 
+    var MapIterator = function($iterator, $map) {
+        this.$$iterator = $iterator;
+        this.$$map = $map;
+    };
+
+    MapIterator.prototype.next = function() {
+        if (this.$$iterator.next()) {
+            this.$$cache = null;
+            return true;
+        }
+        else {
+            return false;
+        }
+    };
+
+    MapIterator.prototype.current = function() {
+        if (!this.$$cache) {
+            this.$$cache = this.$$map(this.$$iterator.current());
+        }
+
+        return this.$$cache;
+    };
+
+    Iterable.prototype.map = function(map, $this) {
+        var that = this;
+        var args = argsToArray(arguments);
+
+        throwIfNotQuickOrFunction(map, 'map', 'map');
+
+        if ((args.length > 1) && isPropertyMultiselector(args)) {
+            map = createPropertyMultiselectorFunciton(args);
+        }
+        else if (isPropertySelector(map)) {
+            map = createPropertySelectorFunction(map);
+        }
+        else {
+            map = bindContext(map, $this);
+        }
+
+        return new Iterable(function() {
+            var it = that.iterator();
+            return new MapIterator(it, map);
+        });
+
+    };
+
     // TODO:
-    // Filter
-    // Map
     // FoldLeft
     // Take
     // Skip
