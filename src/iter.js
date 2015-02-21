@@ -210,16 +210,67 @@
         return (it.next() === false);
     };
 
+    var ANY_DEFAULT_PRED = function(x) { return x; };
+
     Iterable.prototype.any = function(pred, $this) {
-        throw 1;
+        pred = pred || ANY_DEFAULT_PRED;
+
+        throwIfNotQuickOrFunction(pred, 'any', 'pred');
+        if (typeof pred === "string") {
+            pred = quickToFunction(pred, { boolResult: true });
+        }
+
+        pred = bindContext(pred, $this);
+
+        var it = this.iterator();
+        var index = -1;
+        while (it.next()) {
+            index += 1;
+            if (pred(it.current(), index))
+                return it.current();
+        }
+
+        return false;
     };
 
+    var ALL_DEFAULT_PRED = function(x) { return x; };
+
     Iterable.prototype.all = function(pred, $this) {
-        throw 1;
+        pred = pred || ALL_DEFAULT_PRED;
+
+        throwIfNotQuickOrFunction(pred, 'all', 'pred');
+        if (typeof pred === "string") {
+            pred = quickToFunction(pred, { boolResult: true });
+        }
+
+        pred = bindContext(pred, $this);
+
+        var it = this.iterator();
+        var index = -1;
+        while (it.next()) {
+            index += 1;
+            if (!pred(it.current(), index))
+                return false;
+        }
+
+        return (index === -1 ? true : it.current());
     };
 
     Iterable.prototype.count = function(predOpt, $this) {
-        throw 1;
+        var it = null;
+
+        if (predOpt) {
+            it = this.filter(predOpt, $this).iterator();
+        }
+        else {
+            it = this.iterator();
+        }
+
+        var count = 0;
+        while (it.next()) {
+            count += 1;
+        }
+        return count;
     };
 
     Iterable.prototype.toArray = function() {
@@ -319,7 +370,6 @@
             var it = that.iterator();
             return new MapIterator(it, map);
         });
-
     };
 
     // TODO:
@@ -338,7 +388,6 @@
     // iter.range
     // iter.concat(it1, it2, it3)
     // iter.empty
-    // iter(function() { return x++; }) <-- generator
     // 
 
     global.iter = function(obj) {

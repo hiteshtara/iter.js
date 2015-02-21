@@ -184,3 +184,119 @@ describe("map", function() {
         ]);
     });
 });
+
+describe("count", function() {
+    it("count given empty sequence return zero", function() {
+        var result = iter([]).count();
+
+        expect(result).toBe(0);
+    });
+
+    it("count given sequence with 2 elements returns 2", function() {
+        var result = iter([1,2]).count();
+
+        expect(result).toBe(2);
+    });
+
+    it("given predicate returns number of elements fulfilling predicate", function() {
+        var result = iter([1,2,3,4,5]).count('$ % 2 === 0');
+
+        expect(result).toBe(2);
+    });
+
+    it("count accepts quick and functions", function() {
+        var qResult = iter([1,2,3,4]).count('$ > 2');
+        var fResult = iter([1,2,3,4]).count(function(x) { return x > 2; });
+
+        expect(qResult).toBe(2);
+        expect(fResult).toBe(2);
+    });
+
+    it("predicate returns always false - returns zero", function() {
+        var result = iter([1,2,3,4]).count('$ && false');
+
+        expect(result).toBe(0);
+    });
+});
+
+describe("any", function() {
+    it("given empty sequence returns false", function() {
+        var result = iter([]).any();
+
+        expect(result).toBe(false);
+    });
+
+    it("given non empty sequence containing all falsy values return false", function() {
+        var result = iter([undefined, null, 0, '', false]).any();
+
+        expect(result).toBe(false);
+    });
+
+    it("given non empty sequence containing at " +
+       "least single truthy value returns that value", function() {
+        var result = iter([null, 0, 314, '', false]).any();
+
+        expect(result).toBe(314);
+    });
+
+    it("given predicate returns first element that fulfills " + 
+       "predicate", function() {
+    
+        var result = iter([1,2,3,4,5])
+            .any(function(x) { return x === 3; });
+
+        expect(result).toBe(3);
+    });
+
+    it("no value fulfills predicate - returns false", function() {
+        var result = iter(['foo', 'bar'])
+            .any(function(x) { return 0; });
+
+        expect(result).toBe(false);
+    });
+
+    it("can be used with quick", function() {
+        var result = iter([1,2,3,4,5]).any('$ % 3 == 2');
+
+        expect(result).toBe(2);
+    });
+});
+
+describe("all", function() {
+    it("given empty sequence returns true", function() {
+        var result = iter([]).all();
+
+        expect(result).toBe(true);
+    });
+
+    it("given sequency with all truthy values returns last value", function() {
+        var result = iter([1,2,3,4]).all();
+
+        expect(result).toBe(4);
+    });
+
+    it("given sequence with at least one falsy value return false", function() {
+        var result = iter([1,2,3,null,5]).all();
+
+        expect(result).toBe(false);
+    });
+
+    it("given predicate that always returns true - returns last value", function() {
+        var result = iter([1,2,3,4,5]).all(function() { return true; });
+
+        expect(result).toBe(5);
+    });
+
+    it("given a predicate that at least once returns falsy value - returns false", function() {
+        var result = iter([1,2,3,4,5])
+            .all(function(x) { return x !== 3; });
+
+        expect(result).toBe(false);
+    });
+
+    it("can be used with quick", function() {
+        var result = iter([1,2,3,4,5]).all('$ > 0');
+
+        expect(result).toBe(5);
+    });
+});
