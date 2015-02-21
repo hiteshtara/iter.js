@@ -159,7 +159,7 @@
     FunctionIterator.prototype.next = function() {
         try {
             var newCurrent = this.$$func();
-            if(newCurrent) {
+            if (newCurrent !== undefined) {
                 this.$$current = newCurrent;
                 return true;
             }
@@ -178,7 +178,7 @@
     };
 
     FunctionIterator.prototype.current = function() {
-        if (!this.$$current) {
+        if (this.$$current === undefined) {
             throw new Error("Call next() before current().");
         }
         else {
@@ -378,7 +378,6 @@
     // Skip
     // Sort
     // Reverse
-    // toArray
     // string Join
     // GroupBy
     // InnerJoin
@@ -390,7 +389,7 @@
     // iter.empty
     // 
 
-    global.iter = function(obj) {
+    var iter = global.iter = function(obj) {
         if (Array.isArray(obj)) {
             return new Iterable(function() {
                 return new ArrayIterator(obj);
@@ -408,6 +407,77 @@
         }
         else {
             throw new Error("Only arrays and object can be iterated.");
+        }
+    };
+
+    // call from : to
+    // call from : step : to
+    // [from..step..to)
+    iter.range = function() {
+        var argsLenght = arguments.length;
+        var args = Array.prototype.slice.call(arguments);
+
+        if (argsLenght != 2 && argsLenght != 3) {
+            throw new Error(
+                'iter.range: Invalid range arguments. ' +
+                'Use range(from, to) or range(from, step, to).');
+        }
+
+        var hasStep = (argsLenght === 3);
+        
+        var from = Number(args[0]);
+        var to = Number(hasStep ? args[2] : args[1]);
+
+        if (!isFinite(from)) {
+            throw new Error('iter.range: from must be a finite number.');
+        }
+
+        if (!isFinite(to)) {
+            throw new Error('iter.range: to must be a finite number.');
+        }
+
+        var step;
+        if (from <= to) {
+            step = (hasStep ? args[1] : 1);
+            if (step <= 0) {
+                throw new Error('iter.range: step must be a positive number.');
+            }
+        }
+        else {
+            step = (hasStep ? args[1] : -1);
+            if (step >= 0) {
+                throw new Error('iter.range: step must be a negative number.');
+            }
+        };
+
+        if (!isFinite(step)) {
+            throw new Error('iter.range: step must be finite number.');
+        }
+
+        var index = 0;
+        if (step >= 0) {
+            return iter(function() {
+                var next = from + index * step;
+                if (next >= to) {
+                    return undefined;
+                }
+                else {
+                    index += 1;
+                    return next;
+                }
+            });
+        }
+        else {
+            return iter(function() {
+                var next = from + index * step;
+                if (next <= to) {
+                    return undefined;
+                }
+                else {
+                    index += 1;
+                    return next;
+                }
+            });
         }
     };
 
