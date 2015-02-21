@@ -17,10 +17,10 @@
     var quickToFunction = function(expression, options) {
         try {
             if (options.boolResult) {
-                return eval('(function($) { return !!(' + expression + '); })');
+                return eval('(function($, $index) { return !!(' + expression + '); })');
             }
             else {
-                return eval('(function($) { return (' + expression + '); })');
+                return eval('(function($, $index) { return (' + expression + '); })');
             }
         }
         catch(ex) {
@@ -72,6 +72,11 @@
         selected += " }";
 
         return eval('(function($){ return (' + selected + '); })');
+    };
+
+    var isQuickRegex = /\$/;
+    var isQuick = function(str) {
+        return str && typeof str === "string" && isQuickRegex.test(str);
     };
 
     var throwIfNotQuickOrFunction = function(argValue, argName, funcName) {
@@ -230,11 +235,13 @@
     var FilterIterator = function($iterator, $pred) {
         this.$$iterator = $iterator;
         this.$$pred = $pred;
+        this.$$index = -1;
     };
 
     FilterIterator.prototype.next = function() {
         while (this.$$iterator.next()) {
-            if (this.$$pred(this.$$iterator.current())) {
+            this.$$index += 1;
+            if (this.$$pred(this.$$iterator.current(), this.$$index)) {
                 return true;
             }
         }
@@ -266,11 +273,13 @@
     var MapIterator = function($iterator, $map) {
         this.$$iterator = $iterator;
         this.$$map = $map;
+        this.$$index = -1;
     };
 
     MapIterator.prototype.next = function() {
         if (this.$$iterator.next()) {
             this.$$cache = null;
+            this.$$index += 1;
             return true;
         }
         else {
@@ -280,7 +289,7 @@
 
     MapIterator.prototype.current = function() {
         if (!this.$$cache) {
-            this.$$cache = this.$$map(this.$$iterator.current());
+            this.$$cache = this.$$map(this.$$iterator.current(), this.$$index);
         }
 
         return this.$$cache;
@@ -297,6 +306,10 @@
         }
         else if (isPropertySelector(map)) {
             map = createPropertySelectorFunction(map);
+        }
+        else if (isQuick(map)) {
+            map = quickToFunction(map, { boolResult: false });
+            map = bindContext(map, $this);
         }
         else {
             map = bindContext(map, $this);

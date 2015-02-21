@@ -64,6 +64,16 @@ describe("filter", function() {
         filtered.next();
         expect(filtered.current()).toBe(3);
     });
+
+    it("allows to use $index inside quick", function() {
+        var array = ['foo', 'bar', 'nyu'];
+
+        var result = iter(array)
+            .filter('$index === 1')
+            .toArray();
+
+        expect(result).toEqual(['bar']);
+    });
 });
 
 describe("toArray", function() {
@@ -132,5 +142,45 @@ describe("map", function() {
         var result = iter(array).map('foo', 'bar').toArray();
 
         expect(result).toEqual([{ foo: 1, bar: 2 }, { foo: 10, bar: 20 }]);
+    });
+
+    it("quick can be used to return custom value", function() {
+        var array = [1,2,3];
+
+        var result = iter(array)
+            .map('{ n: $, n2: ($*$) }')
+            .toArray();
+
+        expect(result).toEqual([
+            { n:1, n2:1 },
+            { n:2, n2:4 },
+            { n:3, n2:9 }
+        ]);
+    });
+
+    it("map function has two arguments: current value and index", function() {
+        var array = ['foo', 'bar', 'nyu'];
+
+        var result = iter(array)
+            .map(function(item, i) { return item + '.' + i; })
+            .toArray();
+
+        expect(result).toEqual([
+            'foo.0', 'bar.1', 'nyu.2'
+        ]);
+    });
+
+    it("$index can be used in quick to access index", function() {
+        var array = ['foo', 'bar', 'nyu'];
+
+        var result = iter(array)
+            .map('{ v:$, i:$index }')
+            .toArray();
+
+        expect(result).toEqual([
+            { v:'foo', i:0 },
+            { v:'bar', i:1 },
+            { v:'nyu', i:2 }
+        ]);
     });
 });
