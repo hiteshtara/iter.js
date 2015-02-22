@@ -1,3 +1,7 @@
+/* jshint globalstrict: true */
+'use strict';
+
+var iter = window.iter;
 
 describe("filter", function() {
     var array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -8,7 +12,7 @@ describe("filter", function() {
     }); 
 
     it("given predicate that always returns true returns every sequence element", function() {
-        var filtered = arrayIterable.filter(function(item) { 
+        var filtered = arrayIterable.filter(function() { 
             return true;
         }).iterator();
 
@@ -19,7 +23,7 @@ describe("filter", function() {
     });
 
     it("given predicate that always returns false returns empty sequence", function() {
-        var filtered = arrayIterable.filter(function(item) {
+        var filtered = arrayIterable.filter(function() {
             return false;
         }).iterator();
 
@@ -234,7 +238,7 @@ describe("any", function() {
 
     it("no value fulfills predicate - returns false", function() {
         var result = iter(['foo', 'bar'])
-            .any(function(x) { return 0; });
+            .any(function() { return 0; });
 
         expect(result).toBe(false);
     });
@@ -454,3 +458,4 @@ describe("join", function() {
         expect(result).toBe('1:2:3');
     });
 });
+

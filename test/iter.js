@@ -1,3 +1,7 @@
+/* jshint globalstrict: true, curly: false */
+'use strict';
+
+var iter = window.iter;
 
 describe("iter library entry point", function() {
     it("should throw error given null", function() {
@@ -213,3 +217,4 @@ describe("iterator", function() {
         });
     });
 });
+
