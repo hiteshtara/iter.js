@@ -128,22 +128,6 @@ describe("map", function() {
         expect(result2).toEqual([1,2,7]);
     });
 
-    it("string can be used to select property from object", function() {
-        var array = [{foo: 1, bar: 2}, { foo: 10, bar: 20 }];
-
-        var result = iter(array).map('foo').toArray();
-
-        expect(result).toEqual([1, 10]);
-    });
-
-    it("array of strings can be used to select many properties from sequence objects", function() {
-        var array = [{ foo: 1, bar: 2, nyu: 3 }, { foo: 10, bar: 20, nyu: 30 }];
-
-        var result = iter(array).map('foo', 'bar').toArray();
-
-        expect(result).toEqual([{ foo: 1, bar: 2 }, { foo: 10, bar: 20 }]);
-    });
-
     it("quick can be used to return custom value", function() {
         var array = [1,2,3];
 
@@ -320,5 +304,109 @@ describe("range", function() {
 
         expect(result1).toEqual([1, 1.5, 2, 2.5]);
         expect(result2).toEqual([3, 2.5, 2, 1.5]);
+    });
+});
+
+describe("select", function() {
+    it("string can be used to select property from object", function() {
+        var array = [{foo: 1, bar: 2}, { foo: 10, bar: 20 }];
+
+        var result = iter(array).select('foo').toArray();
+
+        expect(result).toEqual([1, 10]);
+    });
+
+    it("array of strings can be used to select many properties from sequence objects", function() {
+        var array = [{ foo: 1, bar: 2, nyu: 3 }, { foo: 10, bar: 20, nyu: 30 }];
+
+        var result = iter(array).select('foo', 'bar').toArray();
+
+        expect(result).toEqual([{ foo: 1, bar: 2 }, { foo: 10, bar: 20 }]);
+    });
+});
+
+describe("foldl", function() {
+    var opPlus;
+
+    beforeEach(function() {
+        opPlus = function(acc, x) {
+            return acc + x;
+        };
+    });
+
+    it("given emtpy sequence returns seed", function() {
+        var result = iter([]).foldl(7, opPlus);
+
+        expect(result).toBe(7);
+    });
+
+    it("given sequence folds sequence and returns accumulator", function() {
+        var result = iter([1,2,3,4]).foldl(0, opPlus);
+
+        expect(result).toBe(10);
+    });
+
+    it("given sequence folds sequence and returns accumulator 2", function() {
+        var result = iter([1,2,3,4]).foldl([], function(acc, x) { acc.push(x); return acc; });
+        
+        expect(result).toEqual([1,2,3,4]);
+    });
+});
+
+describe("foldl1", function() {
+    var opMul;
+
+    beforeEach(function() {
+        opMul = function(acc, x) { return acc * x; };
+    });
+
+    it("given empty sequence throws exception", function() {
+        expect(function() {
+            iter([]).foldl1(opMul); 
+        }).toThrow();
+    });
+
+    it("given non empty sequence folds sequence", function() {
+        var result = iter([1,2,3,4]).foldl1(opMul);
+
+        expect(result).toBe(24);
+    });
+});
+
+describe("sum, product, avg", function() {
+    it("sum given empty sequence returns zero", function() {
+        var result = iter([]).sum();
+
+        expect(result).toBe(0);
+    });
+
+    it("sum given sequence returns sum of elements", function() {
+        var result = iter([1,2,3]).sum();
+
+        expect(result).toBe(6);
+    });
+
+    it("product given empty sequence returns one", function() {
+        var result = iter([]).product();
+
+        expect(result).toBe(1);
+    });
+
+    it("product given sequence returns product of elements", function() {
+        var result = iter([1,2,3]).product();
+
+        expect(result).toBe(6);
+    });
+
+    it("avg given empty sequence returns NaN", function() {
+        var result = iter([]).avg();
+
+        expect(isNaN(result)).toBeTruthy();
+    });
+
+    it("avg given sequence of elements returns average", function() {
+        var result = iter([1,2,3]).avg();
+
+        expect(result).toBe(2);
     });
 });
