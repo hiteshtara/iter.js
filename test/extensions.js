@@ -410,3 +410,47 @@ describe("sum, product, avg", function() {
         expect(result).toBe(2);
     });
 });
+
+describe("skip", function() {
+    it("returns original sequence given count zero", function() {
+        var result = iter([1,2,3]).skip(0).toArray();
+
+        expect(result).toEqual([1,2,3]);
+    });
+
+    it("skips given elements count", function() {
+        var result = iter([1,2,3,4,5]).skip(2).toArray();
+
+        expect(result).toEqual([3,4,5]);
+    });
+});
+
+describe("take", function() {
+    it("given zero returns empty sequence", function() {
+        var result = iter([1,2,3]).take(0).toArray();
+
+        expect(result).toEqual([]);
+    });
+
+    it("given count returns sequence containing first count elements from original sequence", function() {
+        var result = iter([1,2,3,4,5]).take(3).toArray();
+
+        expect(result).toEqual([1,2,3]);
+    });
+});
+
+describe("empty", function() {
+    it("returns empty sequence iterator", function() {
+        var result = iter.empty().toArray();
+
+        expect(result).toEqual([]);
+    });
+});
+
+describe("join", function() {
+    it("join sequence elements using give separator", function() {
+        var result = iter([1,2,3]).join(':');
+
+        expect(result).toBe('1:2:3');
+    });
+});

@@ -474,11 +474,194 @@
         return (n === 0 ? NaN : (sum / n));
     };
 
-    // TODO:
-    // FoldLeft
-    // Take
-    // Skip
+    var SkipIterator = function($iterator, $skip) {
+        this.$$iterator = $iterator;
+        this.$$skip = $skip;
+    };
+
+    SkipIterator.prototype.next = function() {
+        while (this.$$iterator.next()) {
+            if (this.$$skip !== 0) {
+                this.$$skip -= 1;
+                continue;
+            }
+            else {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    SkipIterator.prototype.current = function() {
+        return this.$$iterator.current();
+    };
+
+    Iterable.prototype.skip = function(count) {
+        count = Number(count);
+        var that = this;
+
+        if (!isFinite(count)) {
+            throw new Error(
+                'iter.skip: invalid argument value.');
+        }
+
+        count = (count < 0 ? 0 : count);
+
+        return new Iterable(function() {
+            var it = that.iterator();
+            return new SkipIterator(it, count);
+        });
+    };
+
+    var TakeIterator = function($iterator, $take) {
+        this.$$iterator = $iterator;
+        this.$$take = $take;
+    };
+
+    TakeIterator.prototype.next = function() {
+        if (this.$$take === 0)
+            return false;
+
+        if (this.$$iterator.next()) {
+            this.$$take -= 1;
+            return true;
+        }
+        else {
+            return false;
+        }
+    };
+
+    TakeIterator.prototype.current = function() {
+        return this.$$iterator.current();
+    };
+
+    Iterable.prototype.take = function(count) {
+        count = Number(count);
+        var that = this;
+
+        if (!isFinite(count)) {
+            throw new Error(
+                'iter.take: invalid argument value.');
+        }
+
+        count = (count < 0 ? 0 : count);
+
+        return new Iterable(function() {
+            var it = that.iterator();
+            return new TakeIterator(it, count);
+        });
+    };
+
+    Iterable.prototype.join = function(separator) {
+        var array = this.toArray();
+        return array.join(separator);
+    };
+
+    // use: SORT_BY_COMPARER_CONSTRUCTOR (cmp1, cmp2, comp3, ...)
+    var SORT_BY_COMPARER_CONSTRUCTOR = function() {
+        var comparers = argsToArray(arguments);
+
+        return function(left, right) {
+            for (var i = 0; i < comparers.length; i++) {
+                var cmp = comparers[i](left, right);
+                if (cmp !== 0)
+                    return cmp;
+            }
+
+            return 0;
+        };
+    };
+
+    // $comparer.propertyName
+    //
+    var SORT_BY_QUICK_REGEX = /^\$[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*/i;
+    var isSortByQuick = function(str) {
+        return SORT_BY_QUICK_REGEX.test(str);
+    };
+
+    var createComparerFromQuick = function(quick) {
+        var dot = quick.indexOf('.');
+        var comparer = quick.substr(0, dot);
+        var propertyName = quick.substr(dot + 1);
+
+        var comparerFunction = Iterable.prototype.sortBy.comparers[comparer];
+        if (!comparerFunction) {
+            throw new Error('iter.sortBy: cannot find comparer: "' + comparer + '"')
+        }
+
+        return comparerFunction;
+    };
+
+    Iterable.prototype.sortBy = function() {
+        var sortCriteria = argsToArray(arguments);
+
+        if (sortCriteria.length === 0) {
+            throw new Error('iter.sortBy: specify at least one sorting criteria');
+        }
+
+        for (var i = 0; i < sortCriteria.length; i += 1) {
+            throwIfNotQuickOrFunction(sortCriteria[i], 'sort criteria', 'sortBy');
+
+            if (typeof sortCriteria[i] === "string" && !isSortByQuick(sortCriteria[i])) {
+                throw new Error('iter.sortBy: invalid sort criteria: "' + sortCriteria[i] + '". ' + 
+                                'Quick sort criteria have $desc.propName or $asc.propName format.');
+            }
+
+            sortCriteria[i] = createComparerFromQuick(sortCriteria[i]);
+        }
+
+        var cmp = SORT_BY_COMPARER_CONSTRUCTOR.apply(null, sortCriteria);
+        var that = this;
+
+        return new Iterable(function() {
+            var data = that.toArray();
+            Array.sort(data, cmp);
+
+            return ArrayIterator(data);
+        });
+    };
+
+    Iterable.prototype.sortBy.comparers = {
+        asc: function(l, r) {
+            if (l < r) {
+                return (-1);
+            }
+            else if (l > r) {
+                return 1;
+            }
+            else {
+                return 0;
+            }
+        },
+
+        desc: function(l, r) {
+            if (l < r) {
+                return 1;
+            }
+            else if (l > r) {
+                return (-1);
+            }
+            else {
+                return 0;
+            }
+        },
+
+        localeAsc: function(l, r) {
+            return (l || '').localeCompare(r);
+        },
+
+        localeDesc: function(l, r) {
+            return -(l || '').localeCompare(r);
+        }
+    };
+
     // Sort
+    // foo.sortBy('$desc.name', '$asc.age')
+    // foo.sort(cmp) - sort using standart comparision
+
+    // TODO:
+    // Sort .sortBy - .sortBy
     // Reverse
     // string Join
     // GroupBy
@@ -486,9 +669,7 @@
     // LeftJoin
     // CrossJoin ??
     
-    // iter.range
     // iter.concat(it1, it2, it3)
-    // iter.empty
     // 
 
     var iter = global.iter = function(obj) {
@@ -581,6 +762,11 @@
                 }
             });
         }
+    };
+
+    var EMPTY_ITERATOR_FUNCTION = function() { return undefined; };
+    iter.empty = function() {
+        return iter(EMPTY_ITERATOR_FUNCTION);
     };
 
 })(window);
