@@ -701,9 +701,12 @@
             });
         }
         else {
-            throw new Error("Only arrays and object can be iterated.");
+            throw new Error("Only arrays, object and functions can be iterated.");
         }
     };
+
+    // EXPORTS THROUGH ITER
+    iter.Iterable = Iterable;
 
     // call from : to
     // call from : step : to

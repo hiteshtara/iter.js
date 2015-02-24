@@ -1,0 +1,6 @@
+/* jshint globalstrict: true, curly: false */
+'use strict';
+
+var iter = window.iter;
+
+
