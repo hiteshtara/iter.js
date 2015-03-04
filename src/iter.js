@@ -2,11 +2,8 @@
 ;(function(global) {
     'use strict';
 
-    //var noConflict = global.iter;
-    //var exports = {};
-
     var isArray = function(value) {
-      return value && Array.isArray(value);  
+        return value && Array.isArray(value);  
     };
 
     var isString = function(value) {
@@ -14,11 +11,11 @@
     };
 
     var isFunction = function(value) {
-        return (typeof value === "function");
+        return value && (typeof value === "function");
     };
 
     var bindContext = function(func, $this) {
-        if (!$this) {
+        if ($this === undefined) {
             return func;
         }
         else {
@@ -38,16 +35,18 @@
 
     var quickToFunction = function(expression, options) {
         try {
-            var parameters = options.parameters || '$, $index';
-
-            console.log('(function(' + parameters +') { return (' + expression + '); })');
-
+            options = options || {};
+            var parameters = options.parameters || ['$', '$index'];
+           
+            var body;
             if (options.boolResult) {
-                return eval('(function(' + parameters +') { return !!(' + expression + '); })');
+                body = 'return Boolean(' + expression + ');';
             }
             else {
-                return eval('(function(' + parameters +') { return (' + expression + '); })');
+                body = 'return (' + expression + ');';
             }
+
+            return Function.apply(null, parameters.concat([body]));
         }
         catch(ex) {
             var error = new Error(
@@ -60,15 +59,20 @@
     };
 
     var isPropertySelector = function(value) {
-        return (value && isString(value) && ASCII_JS_IDENTIFIER_REGEX.test(value));
+        // any value different than undefined can be used as property selector
+        // e.g. foo[1], foo['bar'], foo[true]
+        
+        return (value !== undefined);
     };
 
     var createPropertySelectorFunction = function(propertyName) {
-        return eval('(function($) { return ($["' + propertyName + '"]); })');
+        return function($) {
+            return $[propertyName];
+        };
     };
 
     var isPropertyMultiselector = function(obj) {
-        if (!obj || !Array.isArray(obj)) {
+        if (!isArray(obj)) {
             return false;
         }
 
@@ -82,22 +86,15 @@
     };
 
     var createPropertyMultiselectorFunciton = function(propertyNames) {
-        // { "foo": $["foo"], "bar": $["bar"] }
-        var selected = '{ ';
-        var first = true;
+        return function($) {
+            var result = {};
 
-        propertyNames.forEach(function(property) {
-            if (!first) {
-                selected += ", ";
+            for (var i = 0; i < propertyNames.length; i += 1) {
+                result[propertyNames[i]] = $[propertyNames[i]];
             }
-            first = false;
 
-            selected += '"' + property + '": ' + '$["' + property + '"]';
-        });
-
-        selected += " }";
-
-        return eval('(function($){ return (' + selected + '); })');
+            return result;
+        };
     };
 
     var isQuick = function(value) {
@@ -225,18 +222,16 @@
             i += 1;
         }
     };
-
-    Iterable.prototype.isEmpty = function() {
-        var it = this.iterator();
+Iterable.prototype.isEmpty = function() { var it = this.iterator();
         return (it.next() === false);
     };
 
-    var ANY_DEFAULT_PRED = function(x) { return x; };
+    var SOME_DEFAULT_PRED = function(x) { return x; };
 
-    Iterable.prototype.any = function(pred, $this) {
-        pred = pred || ANY_DEFAULT_PRED;
+    Iterable.prototype.some= function(pred, $this) {
+        pred = pred || SOME_DEFAULT_PRED;
 
-        throwIfNotQuickOrFunction(pred, 'pred', 'any');
+        throwIfNotQuickOrFunction(pred, 'pred', 'some');
 
         if (isQuick(pred)) {
             pred = quickToFunction(pred, { boolResult: true });
@@ -251,19 +246,19 @@
             index += 1;
 
             if (pred(it.current(), index)) {
-                return it.current();
+                return true;
             }
         }
 
         return false;
     };
 
-    var ALL_DEFAULT_PRED = function(x) { return x; };
+    var EVERY_DEFAULT_PRED = function(x) { return x; };
 
-    Iterable.prototype.all = function(pred, $this) {
-        pred = pred || ALL_DEFAULT_PRED;
+    Iterable.prototype.every = function(pred, $this) {
+        pred = pred || EVERY_DEFAULT_PRED;
 
-        throwIfNotQuickOrFunction(pred, 'pred', 'all');
+        throwIfNotQuickOrFunction(pred, 'pred', 'every');
 
         if (isQuick(pred)) {
             pred = quickToFunction(pred, { boolResult: true });
@@ -832,7 +827,7 @@
         options = options || {};
 
         return quickToFunction(expression, {
-            parameters: parameters.join(', ')
+            parameters: parameters
         });
     };
 

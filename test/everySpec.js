@@ -3,22 +3,22 @@
 
 var iter = window.iter;
 
-describe("all", function() {
+describe("every", function() {
     it("given empty sequence returns true", function() {
-        var result = iter([]).all();
+        var result = iter([]).every();
 
         expect(result).toBe(true);
     });
 
-    it("given sequence with all truthy values returns true", function() {
-        var result = iter([1,2,3,4]).all();
+    it("given sequence with every truthy values returns true", function() {
+        var result = iter([1,2,3,4]).every();
 
         expect(result).toBe(true);
     });
 
     it("given sequence with at least one falsy value returns false", function() {
-        var result1 = iter([1,2,3,null,5]).all();
-        var result2 = iter([1,2,0,3,4]).all();
+        var result1 = iter([1,2,3,null,5]).every();
+        var result2 = iter([1,2,0,3,4]).every();
 
         expect(result1).toBe(false);
         expect(result2).toBe(false);
@@ -26,14 +26,14 @@ describe("all", function() {
 
     it("given predicate that always returns true - returns true", function() {
         var result = iter([1,2,3,4,5])
-            .all(function() { return true; });
+            .every(function() { return true; });
 
         expect(result).toBe(true);
     });
 
     it("given a predicate that at least once returns false - returns false", function() {
         var result = iter([1,2,3,4,5])
-            .all(function(x) { return x !== 3; });
+            .every(function(x) { return x !== 3; });
 
         expect(result).toBe(false);
     });
@@ -42,7 +42,7 @@ describe("all", function() {
         var values = [], indexes = [];
 
         iter(['foo', 'bar', 'nyu'])
-            .all(function(v,i) { values.push(v); indexes.push(i); return true; });
+            .every(function(v,i) { values.push(v); indexes.push(i); return true; });
 
         expect(values).toEqual(['foo', 'bar', 'nyu']);
         expect(indexes).toEqual([0,1,2]);
@@ -53,24 +53,34 @@ describe("all", function() {
         var context = {};
 
         iter([1])
-            .all(function() { $this = this; return true; }, context);
+            .every(function() { $this = this; return true; }, context);
 
         expect($this).toBe(context);
     });
 
+    it("stops iterations after seeing falsy value", function() {
+        var data = [1,2,3,null,7,0];
+        var iterations = 0;
+
+        iter(function() { iterations += 1; return data.shift(); })
+            .every();
+
+        expect(iterations).toBe(4);
+    });
+
     it("quick can be used as predicate", function() {
-        var result1 = iter([1,2,3,4,5]).all('$ !== 0');
+        var result1 = iter([1,2,3,4,5]).every('$ !== 0');
         expect(result1).toBe(true);
 
-        var result2 = iter([1,2,3,4,5]).all('$ === 3');
+        var result2 = iter([1,2,3,4,5]).every('$ === 3');
         expect(result2).toBe(false);
     });
 
     it("quick have two parameters $ and $index", function() {
-        var result1 = iter([1,2,3,4,5]).all('$ > $index');
+        var result1 = iter([1,2,3,4,5]).every('$ > $index');
         expect(result1).toBe(true);
 
-        var result2 = iter([1,2,3,4]).all('$index < 2');
+        var result2 = iter([1,2,3,4]).every('$index < 2');
         expect(result2).toBe(false);
     });
 });
