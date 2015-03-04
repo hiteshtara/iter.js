@@ -5,6 +5,18 @@
     //var noConflict = global.iter;
     //var exports = {};
 
+    var isArray = function(value) {
+      return value && Array.isArray(value);  
+    };
+
+    var isString = function(value) {
+        return (typeof value === "string");
+    };
+
+    var isFunction = function(value) {
+        return (typeof value === "function");
+    };
+
     var bindContext = function(func, $this) {
         if (!$this) {
             return func;
@@ -14,9 +26,21 @@
         }
     };
 
+    var argsToArray = function(args) {
+        return Array.prototype.slice.call(args);
+    };
+
+    var ASCII_JS_IDENTIFIER_REGEX = /^[$a-z_][$a-z0-9_]*$/i;
+    
+    var isJSIdentifier = function(value) {
+        return value && isString(value) && ASCII_JS_IDENTIFIER_REGEX.test(value);
+    };
+
     var quickToFunction = function(expression, options) {
         try {
             var parameters = options.parameters || '$, $index';
+
+            console.log('(function(' + parameters +') { return (' + expression + '); })');
 
             if (options.boolResult) {
                 return eval('(function(' + parameters +') { return !!(' + expression + '); })');
@@ -35,10 +59,8 @@
         }
     };
 
-    var jsIdentifierRegex = /^[a-z_][a-z0-9_]*$/i;
-
-    var isPropertySelector = function(obj) {
-        return obj && (typeof obj === "string") && jsIdentifierRegex.test(obj);
+    var isPropertySelector = function(value) {
+        return (value && isString(value) && ASCII_JS_IDENTIFIER_REGEX.test(value));
     };
 
     var createPropertySelectorFunction = function(propertyName) {
@@ -78,24 +100,19 @@
         return eval('(function($){ return (' + selected + '); })');
     };
 
-    var isQuickRegex = /\$/;
-    var isQuick = function(str) {
-        return str && typeof str === "string" && isQuickRegex.test(str);
+    var isQuick = function(value) {
+        return value && isString(value);
     };
 
     var throwIfNotQuickOrFunction = function(argValue, argName, funcName) {
-        if (!argValue || (typeof argValue !== "string" && typeof argValue !== "function")) {
+        if (!argValue || (!isString(argValue) && !isFunction(argValue))) {
             throw new Error(
                 'Invalid value of iter.' + funcName + '() ' +
                 'argument ' + argName + '. ' +
                 'Valid values are quick expressions and functions');
         }
     };
-
-    var argsToArray = function(args) {
-        return Array.prototype.slice.call(args);
-    };
-
+    
     var ArrayIterator = function($array) {
         this.$$index = -1;
         this.$$array = $array;
@@ -265,7 +282,7 @@
             }
         }
 
-        return (index === -1 ? true : it.current());
+        return true;
     };
 
     Iterable.prototype.count = function(predOpt, $this) {
@@ -784,4 +801,39 @@
         return iter(EMPTY_ITERATOR_FUNCTION);
     };
 
-})(window);
+    // usage: iter.quick('$ > 10')
+    // or iter.quick(['$', '$index'], '$ + $index');
+    iter.quick = function(parameters, expression, options) {
+        var args = argsToArray(arguments);
+        
+        if (args.length === 1) {
+            parameters = ['$'];
+            expression = args[0];
+            options = {};
+        }
+
+        // validate parameters
+        if (!isArray(parameters)) {
+            throw new Error('iter.quick: parameters should be passed as array of identifiers e.g. ' +
+                            'iter.quick(["$"], "$ > 3")');
+        }
+
+        for (var i = 0; i < parameters.length; i += 1) {
+            if (!isJSIdentifier(parameters[i])) {
+                throw new Error('iter.quick: invalid JavaScript parameter name: "' + parameters[i] + '"');
+            }
+        }
+
+        // validate expression
+        if (!isQuick(expression)) {
+            throw new Error('iter.quick: invalid or missing expression argument');
+        }
+    
+        options = options || {};
+
+        return quickToFunction(expression, {
+            parameters: parameters.join(', ')
+        });
+    };
+
+})(typeof window === "undefined" ? global : window);
