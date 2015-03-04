@@ -10,6 +10,10 @@
         return (typeof value === "string");
     };
 
+    /*var isNumber = function(value) {
+        return (typeof value === "number");
+    };*/
+
     var isFunction = function(value) {
         return value && (typeof value === "function");
     };
@@ -41,6 +45,9 @@
             var body;
             if (options.boolResult) {
                 body = 'return Boolean(' + expression + ');';
+            }
+            else if (options.voidResult) {
+                body = expression;
             }
             else {
                 body = 'return (' + expression + ');';
@@ -163,8 +170,8 @@
             throw new Error('call next() before current()');
         }
         else {
-            var key = this.$$keys[this.$$index],
-                value = this.$$object[key];
+            var key = this.$$keys[this.$$index];
+            var value = this.$$object[key];
 
             return { key: key, value: value };
         }
@@ -205,21 +212,30 @@
     };
 
     var Iterable = function(iteratorFunction) {
-        if (!iteratorFunction || typeof iteratorFunction !== "function") {
-            throw new Error("iteratorFunction must be a function.");
+        if (!iteratorFunction || !isFunction(iteratorFunction)) {
+            throw new Error("Iterable: iteratorFunction must be a function.");
         }
 
         this.iterator = iteratorFunction;
     };
 
     Iterable.prototype.forEach = function(func, $this) {
-        var it = this.iterator(), i = 0;
-        
+        throwIfNotQuickOrFunction(func, 'func', 'forEach');
+
+        if (isQuick(func)) {
+            func = quickToFunction(func, {
+                voidResult: true
+            });
+        }
+
         func = bindContext(func, $this);
+        
+        var it = this.iterator();
+        var index = 0;
 
         while (it.next()) {
-            func(it.current(), i);
-            i += 1;
+            func(it.current(), index);
+            index += 1;
         }
     };
 
@@ -230,7 +246,7 @@
 
     var SOME_DEFAULT_PRED = function(x) { return x; };
 
-    Iterable.prototype.some= function(pred, $this) {
+    Iterable.prototype.some = function(pred, $this) {
         pred = pred || SOME_DEFAULT_PRED;
 
         throwIfNotQuickOrFunction(pred, 'pred', 'some');
@@ -363,7 +379,7 @@
 
         throwIfNotQuickOrFunction(pred, 'pred', 'filter');
 
-        if (typeof pred === "string") {
+        if (isQuick(pred)) {
             pred = quickToFunction(pred, { boolResult: true });
         }
 
@@ -448,12 +464,14 @@
         return this.map(mapFunc);
     };
 
-    // call fold(0, '$acc + $')
     Iterable.prototype.foldl = function(seed, operation, $this) {
         throwIfNotQuickOrFunction(operation, 'operation', 'foldl');
         
         if (isQuick(operation)) {
-            operation = quickToFunction(operation, { boolResult: false, parameters: '$acc, $' });
+            operation = quickToFunction(operation, { 
+                boolResult: false, 
+                parameters: ['$acc', '$']
+            });
         }
         
         operation = bindContext(operation, $this);
@@ -473,7 +491,10 @@
         throwIfNotQuickOrFunction(operation, 'operation', 'foldl1');
         
         if (isQuick(operation)) {
-            operation = quickToFunction(operation, { boolResult: false, parameters: '$acc, $' });
+            operation = quickToFunction(operation, { 
+                boolResult: false, 
+                parameters: ['$acc', '$']
+            });
         }
         
         operation = bindContext(operation, $this);
@@ -493,16 +514,16 @@
 
     var OP_PLUS = function(acc, x) { return acc + Number(x); };
 
-    Iterable.prototype.sum = function(seed) {
-        seed = Number(seed) || 0;
+    Iterable.prototype.sum = function(seedOpt) {
+        var seed = Number(seedOpt) || 0;
 
         return this.foldl(seed, OP_PLUS);
     };
 
     var OP_MUL = function(acc, x) { return acc*Number(x); };
 
-    Iterable.prototype.product = function(seed) {
-        seed = Number(seed) || 1;
+    Iterable.prototype.product = function(seedOpt) {
+        var seed = Number(seedOpt) || 1;
 
         return this.foldl(seed, OP_MUL);
     };
@@ -717,7 +738,6 @@
     // TODO:
     // Sort .sortBy - .sortBy
     // Reverse
-    // string Join
     // GroupBy
     // InnerJoin
     // LeftJoin

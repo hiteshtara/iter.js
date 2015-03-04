@@ -35,6 +35,26 @@ describe("count", function() {
 
         expect(result).toBe(0);
     });
+
+    it("predicate have two parameters: current value($) and index($index)", function() {
+        var values = [], indexes = [];
+
+        iter([1,2,3]).count(function(v,i) {
+            values.push(v); indexes.push(i);
+            return true;
+        });
+
+        expect(values).toEqual([1,2,3]);
+        expect(indexes).toEqual([0,1,2]);
+    });
+
+    it("context can be set for predicate", function() {
+        var context = {}, $this = null;
+
+        iter([1]).count(function() { $this = this; return true; }, context);
+
+        expect($this).toBe(context);
+    });
 });
 
 

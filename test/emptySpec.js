@@ -5,7 +5,7 @@ var iter = window.iter;
 
 
 describe("empty", function() {
-    it("returns empty sequence iterator", function() {
+    it("returns empty sequence", function() {
         var result = iter.empty().toArray();
 
         expect(result).toEqual([]);

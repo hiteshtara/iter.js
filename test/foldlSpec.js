@@ -30,6 +30,23 @@ describe("foldl", function() {
         
         expect(result).toEqual([1,2,3,4]);
     });
+
+    it("context can be set for fold function", function() {
+        var context = {}, $this;
+
+        iter([1]).foldl(0, function() { 
+            $this = this;
+            return 0;
+        }, context);
+
+        expect($this).toBe(context);
+    });
+
+    it("quick can be used as fold function", function() {
+        var result = iter([1,2,3,4]).foldl(0, '$acc + $');
+
+        expect(result).toBe(10);
+    });
 });
 
 

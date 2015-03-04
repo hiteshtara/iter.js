@@ -30,7 +30,7 @@ describe("filter", function() {
         expect(filtered.next()).toBe(false);
     });
 
-    it("given predicate returns element for which predicate returns true", function() {
+    it("given predicate returns elements for which predicate returns true", function() {
         var filtered = arrayIterable.filter(function(item) {
             return (item % 2 === 0);
         }).iterator();
@@ -43,6 +43,29 @@ describe("filter", function() {
         }
 
         expect(filtered.next()).toBe(false);
+    });
+
+    it("predicate have two parameters current value($) and index($index)", function() {
+        var values = [], indexes = [];
+
+        iter([1,2,3]).filter(function(v,i) {
+            values.push(v); indexes.push(i);
+            return true;
+        }).toArray();
+
+        expect(values).toEqual([1,2,3]);
+        expect(indexes).toEqual([0,1,2]);
+    });
+
+    it("context can be set for predicate", function() {
+        var context = {}, $this = null;
+
+        iter([1,2,3]).filter(function() {
+            $this = this;
+            return false;
+        }, context).toArray();
+
+        expect($this).toBe(context);
     });
 
     it("iterator() always returns new iterator", function() {

@@ -3,7 +3,6 @@
 
 var iter = window.iter;
 
-
 describe("product", function() {
     it("given empty sequence returns one", function() {
         var result = iter([]).product();
