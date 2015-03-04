@@ -222,7 +222,9 @@
             i += 1;
         }
     };
-Iterable.prototype.isEmpty = function() { var it = this.iterator();
+
+    Iterable.prototype.isEmpty = function() { 
+        var it = this.iterator();
         return (it.next() === false);
     };
 
@@ -278,6 +280,34 @@ Iterable.prototype.isEmpty = function() { var it = this.iterator();
         }
 
         return true;
+    };
+
+    Iterable.prototype.and = function() {
+        var it = this.iterator();
+        var curr = true;
+
+        while (it.next()) {
+            curr = it.current();
+            if (!curr) {
+                break;
+            }
+        }
+
+        return curr;
+    };
+
+    Iterable.prototype.or = function() {
+        var it = this.iterator();
+        var curr = false;
+
+        while (it.next()) {
+            curr = it.current();
+            if (curr) {
+                break;
+            }
+        }
+
+        return curr;
     };
 
     Iterable.prototype.count = function(predOpt, $this) {
