@@ -20,6 +20,17 @@ describe("select", function() {
 
         expect(result).toEqual([{ foo: 1, bar: 2 }, { foo: 10, bar: 20 }]);
     });
+
+    it("property name can be any string", function() {
+        var array = [{
+            "foo bar": 1,
+            "'in' 'valid'": 3
+        }];
+
+        var result = iter(array).select('foo bar', "'in' 'valid'").toArray();
+
+        expect(result).toEqual(array);
+    });
 });
 
 

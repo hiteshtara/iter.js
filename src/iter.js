@@ -626,8 +626,7 @@
         return array.join(separator);
     };
 
-    // use: SORT_BY_COMPARER_CONSTRUCTOR (cmp1, cmp2, comp3, ...)
-    var SORT_BY_COMPARER_CONSTRUCTOR = function() {
+    var multiComparer = function() {
         var comparers = argsToArray(arguments);
 
         return function(left, right) {
@@ -642,30 +641,109 @@
         };
     };
 
-    // $comparer.propertyName
-    //
-    var SORT_BY_QUICK_REGEX = /^\$[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*/i;
+    // $.age or $local."first name" or $.age desc or $local."first name" desc
+    // $ desc - in case of numbers, $locale in case of strings
+    var SORT_BY_QUICK_REGEX = /^\$[a-z0-9_]*(\.(([$a-z_][$a-z0-9_]*)|("[^"]*"))( desc)?)?/i;
     var isSortByQuick = function(str) {
         return SORT_BY_QUICK_REGEX.test(str);
     };
 
-    var createComparerFromQuick = function(quick) {
-        var dot = quick.indexOf('.');
-        var comparer = quick.substr(0, dot);
-        var propertyName = quick.substr(dot + 1);
+    var parseSortByQuick = function(quick) {
+        var quickWithoutDesc = quick;
+        var desc = false;
 
-        var comparerFunction = Iterable.prototype.sortBy.comparers[comparer];
-        if (!comparerFunction) {
-            throw new Error('iter.sortBy: cannot find comparer: "' + comparer + '"');
+        if (quick.lastIndexOf(" desc") === (quick.length - " desc".length)) {
+            quickWithoutDesc = quick.substring(0, (quick.length - " desc".length));
+            desc = true;
         }
 
-        var propertySelector = createPropertySelectorFunction(propertyName);
-        return (function(l, r) {
-            l = propertySelector(l);
-            r = propertySelector(r);
+        var dot = quickWithoutDesc.indexOf('.');
+        var hasProperty = true;
+        if (dot === -1) {
+            dot = quickWithoutDesc.length;
+            hasProperty = false;
+        }
 
-            return comparerFunction(l, r);
-        });
+        var comparer = quick.substring(0, dot);
+        var propertyName = (hasProperty ? quickWithoutDesc.substring(dot + 1) : null);
+
+        if (propertyName && (propertyName.indexOf('\"') === 0)) {
+            propertyName = propertyName.substring(1, propertyName.length-1);
+        }
+
+        return {
+            original: quick,
+            comparer: comparer,
+            propertyName: propertyName,
+            desc: desc
+        };
+    };
+
+    var reverseCompareFunction = function(compareFunction) {
+        return function() {
+            return -(compareFunction.apply(this, arguments));
+        };
+    };
+
+    // map string -> function
+    // $ is added to keys to allow inserting keys like __proto__
+    var sortByComparers = null;
+    
+    var resetComparers = function() {
+        sortByComparers = Object.create(null);
+        
+        sortByComparers.$$ = function(l, r) {
+            if (l < r) {
+                return (-1);
+            }
+            else if (l > r) {
+                return 1;
+            }
+            else {
+                return 0;
+            }
+        };
+        
+        sortByComparers.$locale$ = function(l, r) {
+            return String(l || '').localeCompare(r);
+        };
+    };
+
+    resetComparers();
+
+    var addSortByComparer = function(comparerName, comparerFunction) {
+        sortByComparers[comparerName + '$'] = comparerFunction;
+    };
+
+    var getSortByComparer = function(comparerName) {
+        return sortByComparers[comparerName + '$'];
+    };
+
+    var createComparerFromQuick = function(quick) {
+        quick = parseSortByQuick(quick);
+        
+        var comparerFunction = getSortByComparer(quick.comparer);
+        if (!comparerFunction) {
+            throw new Error('iter.sortBy: cannot find comparer: "' + quick.comparer + '"');
+        }
+
+        if (quick.desc) {
+            comparerFunction = reverseCompareFunction(comparerFunction);
+        }
+
+        if (quick.propertyName !== null) {
+            var propertySelector = createPropertySelectorFunction(quick.propertyName);
+
+            return function(l, r) {
+                l = propertySelector(l);
+                r = propertySelector(r);
+
+                return comparerFunction(l, r);
+            };
+        }
+        else {
+            return comparerFunction;
+        }
     };
 
     Iterable.prototype.sortBy = function() {
@@ -678,61 +756,26 @@
         for (var i = 0; i < sortCriteria.length; i += 1) {
             throwIfNotQuickOrFunction(sortCriteria[i], 'sort criteria', 'sortBy');
 
-            if (typeof sortCriteria[i] === "string" && !isSortByQuick(sortCriteria[i])) {
+            if (isString(sortCriteria[i]) && !isSortByQuick(sortCriteria[i])) {
                 throw new Error('iter.sortBy: invalid sort criteria: "' + sortCriteria[i] + '". ' + 
-                                'Quick sort criteria have $desc.propName or $asc.propName format.');
+                                'Quick sort criteria have $comparer.propName or ' +
+                                '$comparer."prop name" format.');
             }
 
             sortCriteria[i] = createComparerFromQuick(sortCriteria[i]);
         }
 
-        var cmp = SORT_BY_COMPARER_CONSTRUCTOR.apply(null, sortCriteria);
+        var cmp = multiComparer.apply(null, sortCriteria);
         var that = this;
 
         return new Iterable(function() {
             var data = that.toArray();
-            Array.sort(data, cmp);
+            data.sort(cmp);
 
-            return ArrayIterator(data);
+            return new ArrayIterator(data);
         });
     };
-
-    Iterable.prototype.sortBy.comparers = {
-        asc: function(l, r) {
-            if (l < r) {
-                return (-1);
-            }
-            else if (l > r) {
-                return 1;
-            }
-            else {
-                return 0;
-            }
-        },
-
-        desc: function(l, r) {
-            if (l < r) {
-                return 1;
-            }
-            else if (l > r) {
-                return (-1);
-            }
-            else {
-                return 0;
-            }
-        },
-
-        localeAsc: function(l, r) {
-            return (l || '').localeCompare(r);
-        },
-
-        localeDesc: function(l, r) {
-            return -(l || '').localeCompare(r);
-        }
-    };
-
     // Sort
-    // foo.sortBy('$desc.name', '$asc.age')
     // foo.sort(cmp) - sort using standart comparision
 
     // TODO:
@@ -879,6 +922,36 @@
         return quickToFunction(expression, {
             parameters: parameters
         });
+    };
+
+    iter.sortBy = Object.create(null);
+
+    iter.sortBy.addComparer = function(comparerName, comparerFunction) {
+        if (!comparerName) {
+            throw new Error('iter.sortBy.addComparer: comparer name cannot be empty.');
+        }
+
+        if (!isString(comparerName)) {
+            throw new TypeError('iter.sort.addComparer: comparer name must be a string.');
+        }
+
+        if (comparerName.indexOf('$') !== 0) {
+            throw new Error('iter.sortBy.addComparer: comparer name must start with $.');
+        }
+
+        if (!comparerFunction) {
+            throw new Error('iter.sort.addComparer: missing argument - comparerFunction.');
+        }
+
+        if (!isFunction(comparerFunction)) {
+            throw new TypeError('iter.sort.addComparer: Comparer function must be a function.'); 
+        }
+
+        addSortByComparer(comparerName, comparerFunction);
+    };
+     
+    iter.sortBy.resetComparers = function() {
+        resetComparers();
     };
 
 })(typeof window === "undefined" ? global : window);
