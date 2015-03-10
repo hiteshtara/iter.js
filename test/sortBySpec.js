@@ -3,7 +3,7 @@
 
 var iter = window.iter;
 
-describe("zzzsortBy", function() {
+describe("sortBy", function() {
     var people;
     var jon_doe_21, marry_doe_22, jon_wozniak_33,
         old_man_101, jessica_cartman_15, jessica_wozniak_35;

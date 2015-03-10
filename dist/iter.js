@@ -18,6 +18,10 @@
         return value && (typeof value === "function");
     };
 
+    var isObject = function(value) {
+        return value && (typeof value === "object");
+    };
+
     var bindContext = function(func, $this) {
         if ($this === undefined) {
             return func;
@@ -27,7 +31,7 @@
         }
     };
 
-    var argsToArray = function(args) {
+    var toArray = function(args) {
         return Array.prototype.slice.call(args);
     };
 
@@ -37,22 +41,33 @@
         return value && isString(value) && ASCII_JS_IDENTIFIER_REGEX.test(value);
     };
 
+    var QUICK_RESULT = {
+        BOOL: "bool",
+        VOID: "void",
+        ANY:  "any"
+    };
+
     var quickToFunction = function(expression, options) {
         try {
             options = options || {};
             var parameters = options.parameters || ['$', '$index'];
            
             var body;
-            if (options.boolResult) {
+            
+            switch(options.result) {
+            case QUICK_RESULT.BOOL:
                 body = 'return Boolean(' + expression + ');';
-            }
-            else if (options.voidResult) {
-                body = expression;
-            }
-            else {
-                body = 'return (' + expression + ');';
-            }
+                break;
 
+            case QUICK_RESULT.VOID:
+                body = expression + '; return;';
+                break;
+
+            default:
+                body = 'return (' + expression + ');';
+                break;
+            }
+            
             return Function.apply(null, parameters.concat([body]));
         }
         catch(ex) {
@@ -116,7 +131,24 @@
                 'Valid values are quick expressions and functions');
         }
     };
-    
+
+    var extend = function() {
+        var args = toArray(arguments);
+        var result = {};
+
+        for(var i = 0; i < args.length; i += 1) {
+            var ithObject = args[i];
+
+            for(var prop in ithObject) {
+                if (Object.prototype.hasOwnProperty.call(ithObject, prop)) {
+                    result[prop] = ithObject[prop];
+                }
+            }
+        }
+
+        return result;
+    };
+
     var ArrayIterator = function($array) {
         this.$$index = -1;
         this.$$array = $array;
@@ -204,6 +236,8 @@
 
     FunctionIterator.prototype.current = function() {
         if (this.$$current === undefined) {
+            // FIXME: function returns undefined on first call
+            // then this generates wrong message
             throw new Error("Call next() before current().");
         }
         else {
@@ -213,89 +247,122 @@
 
     var Iterable = function(iteratorFunction) {
         if (!iteratorFunction || !isFunction(iteratorFunction)) {
-            throw new Error("Iterable: iteratorFunction must be a function.");
+            throw new Error("iter.Iterable: iteratorFunction must be a function.");
         }
 
         this.iterator = iteratorFunction;
     };
 
-    Iterable.prototype.forEach = function(func, $this) {
-        throwIfNotQuickOrFunction(func, 'func', 'forEach');
+    var STANDARD_FUNCTION_OPTIONS_DEFAULTS = {
+        funcResult: QUICK_RESULT.BOOL,
+        funcParams: null // use defaults 
+    };
+
+    var standardFunction = function(options, callback) {
+        options = extend({}, STANDARD_FUNCTION_OPTIONS_DEFAULTS, options);
+
+        var func = options.func;
+        var context = options.context;
+        var iterable = options.iterable;
+
+        throwIfNotQuickOrFunction(func, options.funcArgName, options.methodName);
 
         if (isQuick(func)) {
             func = quickToFunction(func, {
-                voidResult: true
+                result: options.funcResult,
+                parameters: options.funcParams
             });
         }
 
-        func = bindContext(func, $this);
+        func = bindContext(func, context);
         
-        var it = this.iterator();
-        var index = 0;
+        return callback(func, iterable);
+    };
 
-        while (it.next()) {
-            func(it.current(), index);
-            index += 1;
-        }
+    Iterable.prototype.forEach = function(func, $this) {
+        var options = {
+            func: func,
+            funcResult: QUICK_RESULT.VOID,
+            context: $this,
+
+            funcArgName: 'func',
+            methodName: 'forEach',
+
+            iterable: this
+        };
+
+        standardFunction(options, function(func, iterable) {
+            var it = iterable.iterator();
+            var index = 0;
+
+            while (it.next()) {
+                func(it.current(), index);
+                index += 1;
+            }
+        });
     };
 
     Iterable.prototype.isEmpty = function() { 
         var it = this.iterator();
-        return (it.next() === false);
+        return (Boolean(it.next()) === false);
     };
 
     var SOME_DEFAULT_PRED = function(x) { return x; };
 
     Iterable.prototype.some = function(pred, $this) {
-        pred = pred || SOME_DEFAULT_PRED;
+        var options = {
+            func: (pred === undefined ? SOME_DEFAULT_PRED : pred),
+            context: $this,
 
-        throwIfNotQuickOrFunction(pred, 'pred', 'some');
+            funcArgName: 'pred',
+            methodName: 'some',
 
-        if (isQuick(pred)) {
-            pred = quickToFunction(pred, { boolResult: true });
-        }
-
-        pred = bindContext(pred, $this);
-
-        var it = this.iterator();
-
-        var index = -1;
-        while (it.next()) {
-            index += 1;
-
-            if (pred(it.current(), index)) {
-                return true;
+            iterable: this
+        };
+       
+        return standardFunction(options, function(pred, iterable) {
+            var it = iterable.iterator();
+            var index = 0;
+            
+            while (it.next()) {
+                if (pred(it.current(), index)) {
+                    return true;
+                }
+                
+                index += 1;
             }
-        }
 
-        return false;
+            return false;
+        });
     };
 
     var EVERY_DEFAULT_PRED = function(x) { return x; };
 
     Iterable.prototype.every = function(pred, $this) {
-        pred = pred || EVERY_DEFAULT_PRED;
+        var options = {
+            func: (pred === undefined ? EVERY_DEFAULT_PRED : pred),
+            context: $this,
 
-        throwIfNotQuickOrFunction(pred, 'pred', 'every');
+            funcArgName: 'pred',
+            methodName: 'every',
 
-        if (isQuick(pred)) {
-            pred = quickToFunction(pred, { boolResult: true });
-        }
-
-        pred = bindContext(pred, $this);
-
-        var it = this.iterator();
-
-        var index = -1;
-        while (it.next()) {
-            index += 1;
-
-            if (!pred(it.current(), index)) {
-                return false;
+            iterable: this
+        };
+       
+        return standardFunction(options, function(pred, iterable) {
+            var it = iterable.iterator();
+            var index = 0;
+            
+            while (it.next()) {
+                if (!pred(it.current(), index)) {
+                    return false;
+                }
+                
+                index += 1;
             }
-        }
 
-        return true;
+            return true;
+        });
     };
 
     Iterable.prototype.and = function() {
@@ -344,8 +411,9 @@
     };
 
     Iterable.prototype.toArray = function() {
-        var result = [], it = this.iterator();
-
+        var it = this.iterator();
+        var result = [];
+        
         while (it.next()) {
             result.push(it.current());
         }
@@ -375,19 +443,21 @@
     };
 
     Iterable.prototype.filter = function(pred, $this) {
-        var that = this;
+        var options = {
+            func: pred,
+            context: $this,
 
-        throwIfNotQuickOrFunction(pred, 'pred', 'filter');
+            funcArgName: 'pred',
+            methodName: 'filter',
 
-        if (isQuick(pred)) {
-            pred = quickToFunction(pred, { boolResult: true });
-        }
+            iterable: this
+        };
 
-        pred = bindContext(pred, $this);
-
-        return new Iterable(function() {
-            var it = that.iterator();
-            return new FilterIterator(it, pred);
+        return standardFunction(options, function(pred, iterable) {
+            return new Iterable(function() {
+                var it = iterable.iterator();
+                return new FilterIterator(it, pred);
+            });
         });
     };
 
@@ -422,24 +492,27 @@
     };
 
     Iterable.prototype.map = function(map, $this) {
-        var that = this;
+        var options = {
+            func: map,
+            funcResult: QUICK_RESULT.ANY,
+            context: $this,
 
-        throwIfNotQuickOrFunction(map, 'map', 'map');
-        
-        if (isQuick(map)) {
-            map = quickToFunction(map, { boolResult: false });
-        }
-        
-        map = bindContext(map, $this);
+            funcArgName: 'map',
+            methodName: 'map',
 
-        return new Iterable(function() {
-            var it = that.iterator();
-            return new MapIterator(it, map);
+            iterable: this
+        };
+        
+        return standardFunction(options, function(map, iterable) {
+            return new Iterable(function() {
+                var it = iterable.iterator();
+                return new MapIterator(it, map);
+            });
         });
     };
 
     Iterable.prototype.select = function() {
-        var args = argsToArray(arguments);
+        var args = toArray(arguments);
 
         if (args.length === 0) {
             throw new Error(
@@ -458,58 +531,75 @@
             throw new Error(
                 'iter.select: Invalid argument, select() only accept property name(s). ' + 
                 'To select single property use select("propertyName") syntax, to select multiple ' +
-                'properties use select("prop1", "prop2", "prop3").');
+                'properties use select("prop1", "prop2", "prop3") syntax.');
         }
         
         return this.map(mapFunc);
     };
 
-    Iterable.prototype.foldl = function(seed, operation, $this) {
-        throwIfNotQuickOrFunction(operation, 'operation', 'foldl');
-        
-        if (isQuick(operation)) {
-            operation = quickToFunction(operation, { 
-                boolResult: false, 
-                parameters: ['$acc', '$']
-            });
-        }
-        
-        operation = bindContext(operation, $this);
-
-        var acc = seed;
-        var it = this.iterator();
-
-        while (it.next()) {
-            acc = operation(acc, it.current());
+    Iterable.prototype.reduce = function(seed, operation, $this) {
+        if (seed === undefined) {
+            throw new Error('iter.reduce: missing required argument "seed". ' +
+                            'Use iter.reduce1() to perform reduce without having to specify seed.');
         }
 
-        return acc;
+        var options = {
+            func: operation,
+            funcResult: QUICK_RESULT.ANY,
+            funcParams: ['$acc', '$', '$index'],
+            context: $this,
+
+            funcArgName: 'operation',
+            methodName: 'reduce',
+
+            iterable: this
+        };
+       
+        return standardFunction(options, function(operation, iterable) {
+            var it = iterable.iterator();
+            var acc = seed;
+            var index = 0;
+
+            while (it.next()) {
+                acc = operation(acc, it.current(), index);
+                index += 1;
+            }
+
+            return acc;
+        });
     };
 
-    // call foldl1('$acc + $')
-    Iterable.prototype.foldl1 = function(operation, $this) {
-        throwIfNotQuickOrFunction(operation, 'operation', 'foldl1');
-        
-        if (isQuick(operation)) {
-            operation = quickToFunction(operation, { 
-                boolResult: false, 
-                parameters: ['$acc', '$']
-            });
-        }
-        
-        operation = bindContext(operation, $this);
+    // call reduce1('$acc + $')
+    Iterable.prototype.reduce1 = function(operation, $this) {
+        var options = {
+            func: operation,
+            funcResult: QUICK_RESULT.ANY,
+            funcParams: ['$acc', '$', '$index'],
+            context: $this,
 
-        var it = this.iterator();
-        if (!it.next()) {
-            throw new Error('iter.foldl1: sequence contains no elements.');
-        }
+            funcArgName: 'operation',
+            methodName: 'reduce1',
 
-        var acc = it.current();
-        while (it.next()) {
-            acc = operation(acc, it.current());
-        }
+            iterable: this
+        };
+      
+        return standardFunction(options, function(operation, iterable) {
+            var it = iterable.iterator();
+            
+            if (!it.next()) {
+                throw new Error('iter.reduce1: sequence contains no elements.');
+            }
 
-        return acc;
+            var acc = it.current();
+            var index = 1;
+
+            while (it.next()) {
+                acc = operation(acc, it.current(), index);
+                index += 1;
+            }
+
+            return acc;
+        });
     };
 
     var OP_PLUS = function(acc, x) { return acc + Number(x); };
@@ -517,7 +607,7 @@
     Iterable.prototype.sum = function(seedOpt) {
         var seed = Number(seedOpt) || 0;
 
-        return this.foldl(seed, OP_PLUS);
+        return this.reduce(seed, OP_PLUS);
     };
 
     var OP_MUL = function(acc, x) { return acc*Number(x); };
@@ -525,7 +615,7 @@
     Iterable.prototype.product = function(seedOpt) {
         var seed = Number(seedOpt) || 1;
 
-        return this.foldl(seed, OP_MUL);
+        return this.reduce(seed, OP_MUL);
     };
 
     Iterable.prototype.avg = function() {
@@ -627,13 +717,13 @@
     };
 
     var multiComparer = function() {
-        var comparers = argsToArray(arguments);
+        var comparers = toArray(arguments);
 
         return function(left, right) {
             for (var i = 0; i < comparers.length; i++) {
-                var cmp = comparers[i](left, right);
-                if (cmp !== 0) {
-                    return cmp;
+                var comparisionResult = comparers[i](left, right);
+                if (comparisionResult !== 0) {
+                    return comparisionResult;
                 }
             }
 
@@ -667,6 +757,7 @@
         var comparer = quick.substring(0, dot);
         var propertyName = (hasProperty ? quickWithoutDesc.substring(dot + 1) : null);
 
+        // remove " from property name e.g. "foo" -> foo
         if (propertyName && (propertyName.indexOf('\"') === 0)) {
             propertyName = propertyName.substring(1, propertyName.length-1);
         }
@@ -747,22 +838,28 @@
     };
 
     Iterable.prototype.sortBy = function() {
-        var sortCriteria = argsToArray(arguments);
+        var sortCriteria = toArray(arguments);
 
         if (sortCriteria.length === 0) {
-            throw new Error('iter.sortBy: specify at least one sorting criteria');
+            throw new Error('iter.sortBy: specify at least one sorting criteria.');
         }
 
         for (var i = 0; i < sortCriteria.length; i += 1) {
-            throwIfNotQuickOrFunction(sortCriteria[i], 'sort criteria', 'sortBy');
+            throwIfNotQuickOrFunction(sortCriteria[i], 'arguments', 'sortBy');
 
-            if (isString(sortCriteria[i]) && !isSortByQuick(sortCriteria[i])) {
-                throw new Error('iter.sortBy: invalid sort criteria: "' + sortCriteria[i] + '". ' + 
-                                'Quick sort criteria have $comparer.propName or ' +
-                                '$comparer."prop name" format.');
+            if (isString(sortCriteria[i])) {
+                if (!isSortByQuick(sortCriteria[i])) {
+                    throw new Error('iter.sortBy: invalid sort criteria: "' + sortCriteria[i] + '". ' + 
+                                    'Quick sort criteria have $comparer.propName or ' +
+                                    '$comparer."prop name" format.');
+                }
+
+                sortCriteria[i] = createComparerFromQuick(sortCriteria[i]);
             }
-
-            sortCriteria[i] = createComparerFromQuick(sortCriteria[i]);
+            else if (!isFunction(sortCriteria[i])) {
+                throw new Error('iter.sortBy: sort criteria must be quick or function.' +
+                                'Invalid argument at position: ' + i + '.');
+            }
         }
 
         var cmp = multiComparer.apply(null, sortCriteria);
@@ -790,23 +887,23 @@
     // 
 
     var iter = global.iter = function(obj) {
-        if (Array.isArray(obj)) {
+        if (isArray(obj)) {
             return new Iterable(function() {
                 return new ArrayIterator(obj);
             });
         }
-        else if (obj && typeof obj === "object") {
+        else if (isObject(obj)) {
             return new Iterable(function() {
                 return new ObjectIterator(obj);
             });
         }
-        else if(obj && typeof obj === "function") {
+        else if(isFunction(obj)) {
             return new Iterable(function() {
                 return new FunctionIterator(obj);
             });
         }
         else {
-            throw new Error("Only arrays, object and functions can be iterated.");
+            throw new Error("iter: Only arrays, object and functions can be iterated.");
         }
     };
 
@@ -892,7 +989,7 @@
     // usage: iter.quick('$ > 10')
     // or iter.quick(['$', '$index'], '$ + $index');
     iter.quick = function(parameters, expression, options) {
-        var args = argsToArray(arguments);
+        var args = toArray(arguments);
         
         if (args.length === 1) {
             parameters = ['$'];
@@ -920,6 +1017,7 @@
         options = options || {};
 
         return quickToFunction(expression, {
+            result: QUICK_RESULT.ANY,
             parameters: parameters
         });
     };
