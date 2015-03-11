@@ -928,11 +928,33 @@
             return new ArrayIterator(data);
         });
     };
-    // Sort
-    // foo.sort(cmp) - sort using standart comparision
 
+    Iterable.prototype.sort = function(comparer, $this) {
+        if (comparer !== undefined) {
+            if (!isFunction(comparer)) {
+                throw new TypeError('iter.sort: comparer must be a function.');
+            }
+
+            comparer = bindContext(comparer, $this);
+        }
+
+        var that = this;
+
+        return new Iterable(function() {
+            var data = that.toArray();
+
+            if (comparer) {
+                data.sort(comparer);
+            }
+            else {
+                data.sort();
+            }
+
+            return new ArrayIterator(data);
+        });
+    };
+    
     // TODO:
-    // Sort .sortBy - .sortBy
     // Reverse
     // GroupBy
     // InnerJoin
