@@ -35,11 +35,15 @@
         return Array.prototype.slice.call(args);
     };
 
-    var ASCII_JS_IDENTIFIER_REGEX = /^[$a-z_][$a-z0-9_]*$/i;
-    
-    var isJSIdentifier = function(value) {
-        return value && isString(value) && ASCII_JS_IDENTIFIER_REGEX.test(value);
-    };
+    var IDENTITY_FUNCTION = function(x) { return x; };
+
+    var isJSIdentifier = (function() {
+        var ASCII_JS_IDENTIFIER_REGEX = /^[$a-z_][$a-z0-9_]*$/i;
+        
+        return function(value) {
+            return value && isString(value) && ASCII_JS_IDENTIFIER_REGEX.test(value);
+        };
+    })();
 
     var QUICK_RESULT = {
         BOOL: "bool",
@@ -602,33 +606,85 @@
         });
     };
 
-    var OP_PLUS = function(acc, x) { return acc + Number(x); };
+    Iterable.prototype.sum = function(selector, $this) {
+        var options = {
+            func: (selector === undefined ? IDENTITY_FUNCTION : selector),
+            funcResult: QUICK_RESULT.ANY,
+            context: $this,
 
-    Iterable.prototype.sum = function(seedOpt) {
-        var seed = Number(seedOpt) || 0;
+            funcArgName: 'selector',
+            methodName: 'sum',
 
-        return this.reduce(seed, OP_PLUS);
+            iterable: this
+        };
+        
+        return standardFunction(options, function(selector, iterable) {
+            var it = iterable.iterator();
+            var index = 0;
+            var sum = 0;
+
+            while (it.next()) {
+                var tmp = selector(it.current(), index);
+                sum += Number(tmp);
+                index += 1;
+            }
+
+            return sum;
+        });
     };
 
-    var OP_MUL = function(acc, x) { return acc*Number(x); };
+    Iterable.prototype.product = function(selector, $this) {
+        var options = {
+            func: (selector === undefined ? IDENTITY_FUNCTION : selector),
+            funcResult: QUICK_RESULT.ANY,
+            context: $this,
 
-    Iterable.prototype.product = function(seedOpt) {
-        var seed = Number(seedOpt) || 1;
+            funcArgName: 'selector',
+            methodName: 'product',
 
-        return this.reduce(seed, OP_MUL);
+            iterable: this
+        };
+        
+        return standardFunction(options, function(selector, iterable) {
+            var it = iterable.iterator();
+            var index = 0;
+            var prod = 1.0;
+
+            while (it.next()) {
+                var tmp = selector(it.current(), index);
+                prod *= Number(tmp);
+                index += 1;
+            }
+
+            return prod;
+        });
     };
 
-    Iterable.prototype.avg = function() {
-        var it = this.iterator();
+    Iterable.prototype.avg = function(selector, $this) {
+        var options = {
+            func: (selector === undefined ? IDENTITY_FUNCTION : selector),
+            funcResult: QUICK_RESULT.ANY,
+            context: $this,
 
-        var n = 0, sum = 0;
+            funcArgName: 'selector',
+            methodName: 'avg',
 
-        while (it.next()) {
-            n += 1;
-            sum += Number(it.current());
-        }
+            iterable: this
+        };
 
-        return (n === 0 ? NaN : (sum / n));
+        return standardFunction(options, function(selector, iterable) {
+            var it = iterable.iterator();
+            var n = 0, sum = 0;
+
+            while (it.next()) {
+                var tmp = selector(it.current(), n);
+                
+                n += 1;
+                sum += Number(tmp);
+            }
+
+            return (n === 0 ? NaN : (sum / n));
+        });
     };
 
     var SkipIterator = function($iterator, $skip) {
