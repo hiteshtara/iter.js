@@ -179,6 +179,10 @@
         }
     };
 
+    ArrayIterator.prototype.getUnderlyingArray = function() {
+        return this.$$array;
+    };
+
     var ObjectIterator = function($object) {
         this.$$index = -1;
         this.$$keys = Object.keys($object);
@@ -414,8 +418,7 @@
         return count;
     };
 
-    Iterable.prototype.toArray = function() {
-        var it = this.iterator();
+    var iteratorToArray = function(it) {
         var result = [];
         
         while (it.next()) {
@@ -423,6 +426,11 @@
         }
 
         return result;
+    };
+
+    Iterable.prototype.toArray = function() {
+        var it = this.iterator();
+        return iteratorToArray(it);
     };
 
     var FilterIterator = function($iterator, $pred) {
@@ -953,14 +961,127 @@
             return new ArrayIterator(data);
         });
     };
-    
+ 
+    var BackwardArrayIterator = function($array) {
+        this.$$index = $array.length;
+        this.$$arrayLength = $array.length;
+        this.$$array = $array;
+    };
+
+    BackwardArrayIterator.prototype.next = function() {
+        var decIndex = this.$$index - 1;
+
+        if (decIndex >= 0) {
+            this.$$index = decIndex;
+            return true;
+        }
+        else {
+            return false;
+        }
+    };
+
+    BackwardArrayIterator.prototype.current = function() {
+        if (this.$$index === this.$arrayLength) {
+            throw new Error('Call next() before current().');
+        }
+        else {
+            return this.$$array[this.$$index];
+        }
+    };
+
+
+    Iterable.prototype.reverse = function() {
+        var that = this;
+
+        return new Iterable(function() {
+            var it = that.iterator();
+            var array;
+
+            if (it instanceof ArrayIterator) {
+                array = it.getUnderlyingArray();
+                return new BackwardArrayIterator(array);
+            }
+            else {
+                array = iteratorToArray(it);
+                array.reverse();
+                return new ArrayIterator(array);
+            }
+        });
+    };
+
+    Iterable.prototype.first = function() {
+        var it = this.iterator();
+
+        if (it.next()) {
+            return it.current();
+        }
+        else {
+            throw new Error('iter.first: sequence contains no elements.');
+        }
+    };
+
+    Iterable.prototype.firstOrDefault = function(defaultValue) {
+        var it = this.iterator();
+
+        if (it.next()) {
+            return it.current();
+        }
+        else {
+            return defaultValue;
+        }
+    };
+
+    Iterable.prototype.last = function() {
+        var it = this.iterator();
+        var value;
+
+        if (!it.next()) {
+            throw new Error('iter.last: sequence contains no elements.');
+        }
+        else {
+            value = it.current();
+        }
+
+        while (it.next()) {
+            value = it.current();
+        }
+
+        return value;
+    };
+
+    Iterable.prototype.lastOrDefault = function(defaultValue) {
+        var it = this.iterator();
+        var value;
+
+        if (!it.next()) {
+            return defaultValue;
+        }
+        else {
+            value = it.current();
+        }
+
+        while (it.next()) {
+            value = it.current();
+        }
+
+        return value;
+    };
+
+    // groupby('$.basicTypeProperty' number, string, boolean)
+    // groupby([array of basic properties])
+    // groupby('$.age') groupby('$.age', '$.firstname', '$.lastname')
+    // groupby('Math.floor($index/5)')
+
     // TODO:
-    // Reverse
+    // one 
     // GroupBy
     // InnerJoin
     // LeftJoin
     // CrossJoin ??
-    
+    // isEmpty?
+    // materialize <- memoization
+    // iter.zip
+    // iter.interleave
     // iter.concat(it1, it2, it3)
     // 
 
