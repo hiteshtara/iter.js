@@ -36,6 +36,7 @@
     };
 
     var IDENTITY_FUNCTION = function(x) { return x; };
+    var ALWAYS_TRUE_PREDICATE = function() { return true; };
 
     var isJSIdentifier = (function() {
         var ASCII_JS_IDENTIFIER_REGEX = /^[$a-z_][$a-z0-9_]*$/i;
@@ -1009,71 +1010,268 @@
         });
     };
 
-    Iterable.prototype.first = function() {
-        var it = this.iterator();
+    var internalFirst = function(iterable, funcName, predOpt, $this) {
+        var options = {
+            func: (predOpt === undefined ? ALWAYS_TRUE_PREDICATE : predOpt),
+            context: $this,
 
-        if (it.next()) {
-            return it.current();
+            funcArgName: 'predOpt',
+            methodName: funcName,
+
+            iterable: iterable
+        };
+
+        return standardFunction(options, function(pred, iterable) {
+            var it = iterable.iterator();
+            var index = 0;
+
+            while (it.next()) {
+                var curr = it.current();
+                if (pred(curr, index)) {
+                    return { value: curr };
+                }
+
+                index += 1;
+            }
+
+            return null;
+        });
+    };
+
+    Iterable.prototype.first = function(predOpt, $this) {
+        var result = internalFirst(this, 'first', predOpt, $this);
+
+        if (result) {
+            return result.value;
+        }
+        else if (predOpt) {
+            throw new Error('iter.first: sequence contains no elements satisfying the predicate.');
         }
         else {
             throw new Error('iter.first: sequence contains no elements.');
         }
     };
 
-    Iterable.prototype.firstOrDefault = function(defaultValue) {
-        var it = this.iterator();
+    Iterable.prototype.firstOrDefault = function(defaultValue, predOpt, $this) {
+        var result = internalFirst(this, 'firstOrDefault', predOpt, $this);
 
-        if (it.next()) {
-            return it.current();
+        if (result) {
+            return result.value;
         }
         else {
             return defaultValue;
         }
     };
 
-    Iterable.prototype.last = function() {
-        var it = this.iterator();
-        var value;
+    var internalLast = function(iterable, funcName, predOpt, $this) {
+        var options = {
+            func: (predOpt === undefined ? ALWAYS_TRUE_PREDICATE : predOpt),
+            context: $this,
 
-        if (!it.next()) {
+            funcArgName: 'predOpt',
+            methodName: funcName,
+
+            iterable: iterable
+        };
+
+        return standardFunction(options, function(pred, iterable) {
+            var it = iterable.iterator();
+            var index = 0;
+
+            var lastValue;
+            var hasLastValue = false;
+
+            while (it.next()) {
+                var curr = it.current();
+
+                if (pred(curr, index)) {
+                    lastValue = curr;
+                    hasLastValue = true;
+                }
+
+                index += 1;
+            }
+
+            return (hasLastValue ? { value: lastValue } : null);
+        });
+    };
+
+    Iterable.prototype.last = function(predOpt, $this) {
+        var result = internalLast(this, 'last', predOpt, $this);
+        
+        if (result) {
+            return result.value; 
+        }
+        else if (predOpt) {
+            throw new Error('iter.last: sequence contains no elements statisfying the predicate.');
+        }
+        else {
             throw new Error('iter.last: sequence contains no elements.');
-        }
-        else {
-            value = it.current();
-        }
-
-        while (it.next()) {
-            value = it.current();
-        }
-
-        return value;
+            }
     };
 
-    Iterable.prototype.lastOrDefault = function(defaultValue) {
-        var it = this.iterator();
-        var value;
-
-        if (!it.next()) {
-            return defaultValue;
+    Iterable.prototype.lastOrDefault = function(defaultValue, predOpt, $this) {
+        var result = internalLast(this, 'lastOrDefault', predOpt, $this);
+        
+        if (result) {
+            return result.value; 
         }
         else {
-            value = it.current();
+            return defaultValue;
         }
-
-        while (it.next()) {
-            value = it.current();
-        }
-
-        return value;
     };
 
     // groupby('$.basicTypeProperty' number, string, boolean)
     // groupby([array of basic properties])
     // groupby('$.age') groupby('$.age', '$.firstname', '$.lastname')
     // groupby('Math.floor($index/5)')
+    Iterable.prototype.groupBy = (function() {
+        var keysEqual = function(leftKey, rightKey) {
+            if (leftKey.length !== rightKey.length) {
+                return false;
+            }
+
+            for (var i = 0; i < leftKey.length; i += 1) {
+                if (leftKey[i] !== rightKey[i]) {
+                    return false;
+                }
+            }
+
+            return true;
+        };
+
+        var computeHash = function(key) {
+            // Array.join, be careful with __proto__
+            return key.join(',') + '$';
+        };
+
+        var addValueToGrouping = function(groupping, key, value) {
+            var keyHash = computeHash(key);
+
+            var listForHash = groupping[keyHash];
+            if (listForHash) {
+                for (var i = 0; i < listForHash.length; i += 1) {
+                    if (keysEqual(listForHash[i].key, key)) {
+                        listForHash[i].values.push(value);
+                        return;
+                    }
+                }
+            }
+
+            var newEntry = { key: key, values: [value] };
+
+            if (listForHash) {
+                listForHash.push(newEntry);
+            }
+            else {
+                groupping[keyHash] = [newEntry];
+            }
+        };
+
+        var createKeySelector = function(selectors) {
+            return function(obj) {
+                var key = [], subkey;
+
+                for (var i = 0; i < selectors.length; i += 1) {
+                    subkey = selectors[i](obj);
+                    key.push(subkey);
+                }
+
+                return key;
+            };
+        };
+
+        var grouppingToArray = function(groupping, isSingleSelectorKey) {
+            var result = [];
+
+            for (var hash in groupping) {
+                if (!Object.prototype.hasOwnProperty.call(groupping, hash)) {
+                    continue;
+                }
+
+                var list = groupping[hash];
+                for(var i = 0; i < list.length; i += 1) {
+                    var tmp = iter(list[i].values);
+                    tmp.key = (isSingleSelectorKey ? list[i].key[0] : list[i].key);
+                    result.push(tmp);
+                }
+            }
+
+            return result;
+        };
+
+        return function() {
+            if (arguments.length === 0) {
+                throw new Error('iter.groupBy: specify at least one property selector.');
+            }
+
+            var selectors = toArray(arguments);
+  
+            for (var i = 0; i < selectors.length; i += 1) {
+                var selector = selectors[i];
+                
+                throwIfNotQuickOrFunction(selector, 'arguments', 'groupBy');
+                
+                if (isQuick(selector)) {
+                    selectors[i] = quickToFunction(selector);
+                }
+            }
+
+            var keySelector = createKeySelector(selectors);
+            var isSingleSelectorKey = (selectors.length === 1);
+
+            var that = this;
+
+            return new Iterable(function() {
+                var groupping = Object.create(null);
+
+                var it = that.iterator();
+                while (it.next()) {
+                    var curr = it.current();
+                    var key = keySelector(curr);
+                    addValueToGrouping(groupping, key, curr);
+                }
+
+                var result = grouppingToArray(groupping, isSingleSelectorKey);
+               return new ArrayIterator(result);
+            });
+        };
+    })();
+
+    Iterable.prototype.random = function() {
+        var it = this.iterator();
+        
+        var index = 1;
+        var current;
+
+        while (it.next()) {
+            if (Math.random() < 1 / index) {
+                current = it.current();
+            }
+
+            index += 1;
+        }
+
+        return current;
+    };
+
+    // TODO: orderBy
+    // spec: '$.age @asc' or '$.name @locale @desc'
+    // @xxx <- adnotations (a la Java) (possible in quick, must be
+    // at the end of quick) @[asciiIdentifier]
+    // orderBy sortuje po property eg. '$[3].foo().toString(33)'
+    //
 
     // TODO:
+    // orderBy - ability to accept expressions e.g. $locale.foo[3].bar(),
+    // - remember about nested expressions e.g. $locale.foo($locale.bar)
+    // $locale($.foo.bar) or $.foo.bar @locale desc sortBy('$.distance @locale desc')
+    // maybe orderBy with standard behaviour - only selecting properties is better
+    // than sortBy
+    // takeWhile, skipWhile
+    // seqMap
     // one 
+    // shuffle
     // GroupBy
     // InnerJoin
     // LeftJoin
