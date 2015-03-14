@@ -14,7 +14,7 @@ describe('groupBy', function() {
         var result = iter([1,2,3,4,5])
             .groupBy('$ % 2')
             .map('{ key: $.key, values: $.toArray() }')
-            .sortBy('$.key')
+            .orderBy('$.key')
             .toArray();
 
         expect(result).toEqual([
@@ -56,7 +56,7 @@ describe('groupBy', function() {
                     v: v.toArray() 
                 }; 
             })
-            .sortBy(function(v) { return v.key; })
+            .orderBy(function(v) { return v.key; })
             .toArray();
 
         expect(groupByAge).toEqual([
@@ -89,8 +89,7 @@ describe('groupBy', function() {
         var result = iter(data)
             .groupBy('$.employee', '$.date')
             .map('{ key: $.key, sum: $.sum("$.value") }')
-            .sortBy(function(l,r) { return l.key[0].localeCompare(r.key[0]); }, 
-                    function(l,r) { return l.key[1] - r.key[1]; })
+            .orderBy('$.key[0] @localeCompare', '$.key[1]')
             .toArray();
 
         expect(result).toEqual([

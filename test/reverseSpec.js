@@ -18,7 +18,7 @@ describe('reverse', function() {
 
     it('given sequence returns sequence in reversed order', function() {
         var result = iter({ foo: 1, bar: 2, nyu: 3})
-            .sortBy('$.key')
+            .orderBy('$.key')
             .reverse()
             .toArray();
 

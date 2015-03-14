@@ -3,7 +3,7 @@
 
 var iter = window.iter;
 
-describe("sortBy", function() {
+describe("orderBy", function() {
     var people;
     var jon_doe_21, marry_doe_22, jon_wozniak_33,
         old_man_101, jessica_cartman_15, jessica_wozniak_35;
@@ -17,13 +17,11 @@ describe("sortBy", function() {
             jessica_cartman_15 = { name: 'jessica',  surname: 'cartman', age: 15 },
             jessica_wozniak_35 = { name: 'jessica',  surname: 'wozniak', age: 35 }
         ];
-
-        iter.sortBy.resetComparers();
     });
 
     it("given empty sequence returns empty sequence", function() {
         var result = iter([])
-            .sortBy('$')
+            .orderBy('$')
             .toArray();
 
         expect(result).toEqual([]);
@@ -31,11 +29,11 @@ describe("sortBy", function() {
 
     it("number array can be sorted in ascending and descending order", function() {
         var resultAsc = iter([1,4,2,3])
-            .sortBy('$')
+            .orderBy('$ @asc')
             .toArray();
 
         var resultDesc = iter([1,4,2,3])
-            .sortBy('$ desc')
+            .orderBy('$ @desc')
             .toArray();
 
         expect(resultAsc).toEqual([1,2,3,4]);
@@ -44,11 +42,11 @@ describe("sortBy", function() {
 
     it("string can be compared using localeCompare", function() {
         var resultAsc = iter(['foo', 'bar', 'nyan'])
-            .sortBy('$locale')
+            .orderBy('$ @localeCompare')
             .toArray();
 
         var resultDesc = iter(['foo', 'bar', 'nyan'])
-            .sortBy('$locale desc')
+            .orderBy('$ @localeCompare @desc')
             .toArray();
 
         expect(resultAsc).toEqual(['bar', 'foo', 'nyan']);
@@ -57,11 +55,11 @@ describe("sortBy", function() {
 
     it("objects can be compared using properties", function() {
         var resultAsc = iter([jon_doe_21, marry_doe_22, old_man_101])
-            .sortBy('$.age')
+            .orderBy('$.age')
             .toArray();
 
         var resultDesc = iter([jon_doe_21, marry_doe_22, old_man_101])
-            .sortBy('$.age desc')
+            .orderBy('$.age @desc')
             .toArray();
 
         expect(resultAsc).toEqual([jon_doe_21, marry_doe_22, old_man_101]);
@@ -70,11 +68,11 @@ describe("sortBy", function() {
 
     it("objects can be compared using string properties e.g. 'foo bar'", function() {
         var resultAsc = iter([old_man_101, jon_doe_21, marry_doe_22])
-            .sortBy('$."name"')
+            .orderBy('$["name"]')
             .toArray();
 
         var resultDesc = iter([old_man_101, jon_doe_21, marry_doe_22])
-            .sortBy('$."name" desc')
+            .orderBy('$["name"] @desc')
             .toArray();
 
         expect(resultAsc).toEqual([jon_doe_21, marry_doe_22, old_man_101]);
@@ -84,11 +82,11 @@ describe("sortBy", function() {
         var complex2 = { 'foo bar': 2 };
 
         resultAsc = iter([complex1, complex2])
-            .sortBy('$."foo bar"')
+            .orderBy('$["foo bar"]')
             .toArray();
 
         resultDesc = iter([complex1, complex2])
-            .sortBy('$."foo bar" desc')
+            .orderBy('$["foo bar"] @desc')
             .toArray();
 
         expect(resultAsc).toEqual([complex1, complex2]);
@@ -97,11 +95,11 @@ describe("sortBy", function() {
 
     it("objects can be compared using many conditions", function() {
         var result1 = iter(people)
-            .sortBy('$.name', '$.age desc')
+            .orderBy('$.name', '$.age @desc')
             .toArray();
 
         var result2 = iter(people)
-            .sortBy('$.name desc', '$.age desc')
+            .orderBy('$.name @desc', '$.age @desc')
             .toArray();
 
         expect(result1).toEqual([
@@ -117,6 +115,7 @@ describe("sortBy", function() {
         ]);
     });
 
+    /* not now
     it("users can install custom comparers", function() {
         iter.sortBy.addComparer('$name', function(l,r) {
             if (l.name > r.name)
@@ -160,6 +159,6 @@ describe("sortBy", function() {
 
         expect(resultAsc).toEqual([data1, data2]);
         expect(resultDesc).toEqual([data2, data1]);
-    });
+    });*/
 });
 
