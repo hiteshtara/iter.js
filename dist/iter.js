@@ -971,116 +971,118 @@
         });
     };
 
-    var internalFirst = function(iterable, funcName, predOpt, $this) {
-        var options = {
-            func: (predOpt === undefined ? ALWAYS_TRUE_PREDICATE : predOpt),
-            context: $this,
+    (function(Iterable) {
+        var internalFirst = function(iterable, funcName, predOpt, $this) {
+            var options = {
+                func: (predOpt === undefined ? ALWAYS_TRUE_PREDICATE : predOpt),
+                context: $this,
 
-            funcArgName: 'predOpt',
-            methodName: funcName,
+                funcArgName: 'predOpt',
+                methodName: funcName,
 
-            iterable: iterable
-        };
+                iterable: iterable
+            };
 
-        return standardFunction(options, function(pred, iterable) {
-            var it = iterable.iterator();
-            var index = 0;
+            return standardFunction(options, function(pred, iterable) {
+                var it = iterable.iterator();
+                var index = 0;
 
-            while (it.next()) {
-                var curr = it.current();
-                if (pred(curr, index)) {
-                    return { value: curr };
+                while (it.next()) {
+                    var curr = it.current();
+                    if (pred(curr, index)) {
+                        return { value: curr };
+                    }
+
+                    index += 1;
                 }
 
-                index += 1;
-            }
-
-            return null;
-        });
-    };
-
-    Iterable.prototype.first = function(predOpt, $this) {
-        var result = internalFirst(this, 'first', predOpt, $this);
-
-        if (result) {
-            return result.value;
-        }
-        else if (predOpt) {
-            throw new Error('iter.first: sequence contains no elements satisfying the predicate.');
-        }
-        else {
-            throw new Error('iter.first: sequence contains no elements.');
-        }
-    };
-
-    Iterable.prototype.firstOrDefault = function(defaultValue, predOpt, $this) {
-        var result = internalFirst(this, 'firstOrDefault', predOpt, $this);
-
-        if (result) {
-            return result.value;
-        }
-        else {
-            return defaultValue;
-        }
-    };
-
-    var internalLast = function(iterable, funcName, predOpt, $this) {
-        var options = {
-            func: (predOpt === undefined ? ALWAYS_TRUE_PREDICATE : predOpt),
-            context: $this,
-
-            funcArgName: 'predOpt',
-            methodName: funcName,
-
-            iterable: iterable
+                return null;
+            });
         };
 
-        return standardFunction(options, function(pred, iterable) {
-            var it = iterable.iterator();
-            var index = 0;
+        Iterable.prototype.first = function(predOpt, $this) {
+            var result = internalFirst(this, 'first', predOpt, $this);
 
-            var lastValue;
-            var hasLastValue = false;
+            if (result) {
+                return result.value;
+            }
+            else if (predOpt) {
+                throw new Error('iter.first: sequence contains no elements satisfying the predicate.');
+            }
+            else {
+                throw new Error('iter.first: sequence contains no elements.');
+            }
+        };
 
-            while (it.next()) {
-                var curr = it.current();
+        Iterable.prototype.firstOrDefault = function(defaultValue, predOpt, $this) {
+            var result = internalFirst(this, 'firstOrDefault', predOpt, $this);
 
-                if (pred(curr, index)) {
-                    lastValue = curr;
-                    hasLastValue = true;
+            if (result) {
+                return result.value;
+            }
+            else {
+                return defaultValue;
+            }
+        };
+    })(Iterable);
+
+    (function(Iterable) {
+        var internalLast = function(iterable, funcName, predOpt, $this) {
+            var options = {
+                func: (predOpt === undefined ? ALWAYS_TRUE_PREDICATE : predOpt),
+                context: $this,
+
+                funcArgName: 'predOpt',
+                methodName: funcName,
+
+                iterable: iterable
+            };
+
+            return standardFunction(options, function(pred, iterable) {
+                var it = iterable.iterator();
+                var index = 0;
+
+                var lastValue = null;
+
+                while (it.next()) {
+                    var curr = it.current();
+
+                    if (pred(curr, index)) {
+                        lastValue = { value: curr };
+                    }
+
+                    index += 1;
                 }
 
-                index += 1;
+                return lastValue;
+            });
+        };
+
+        Iterable.prototype.last = function(predOpt, $this) {
+            var result = internalLast(this, 'last', predOpt, $this);
+            
+            if (result) {
+                return result.value; 
             }
-
-            return (hasLastValue ? { value: lastValue } : null);
-        });
-    };
-
-    Iterable.prototype.last = function(predOpt, $this) {
-        var result = internalLast(this, 'last', predOpt, $this);
-        
-        if (result) {
-            return result.value; 
-        }
-        else if (predOpt) {
-            throw new Error('iter.last: sequence contains no elements statisfying the predicate.');
-        }
-        else {
-            throw new Error('iter.last: sequence contains no elements.');
+            else if (predOpt) {
+                throw new Error('iter.last: sequence contains no elements statisfying the predicate.');
             }
-    };
+            else {
+                throw new Error('iter.last: sequence contains no elements.');
+                }
+        };
 
-    Iterable.prototype.lastOrDefault = function(defaultValue, predOpt, $this) {
-        var result = internalLast(this, 'lastOrDefault', predOpt, $this);
-        
-        if (result) {
-            return result.value; 
-        }
-        else {
-            return defaultValue;
-        }
-    };
+        Iterable.prototype.lastOrDefault = function(defaultValue, predOpt, $this) {
+            var result = internalLast(this, 'lastOrDefault', predOpt, $this);
+            
+            if (result) {
+                return result.value; 
+            }
+            else {
+                return defaultValue;
+            }
+        };
+    })(Iterable);
 
     // groupby('$.basicTypeProperty' number, string, boolean)
     // groupby([array of basic properties])
@@ -1418,13 +1420,72 @@
         };
     })();
 
+    (function(Iterable) {
+        var internalOne = function(iterable, funcName, predOpt, $this) {
+            var options = {
+                func: (predOpt === undefined ? ALWAYS_TRUE_PREDICATE : predOpt),
+                context: $this,
+
+                funcArgName: 'predOpt',
+                methodName: funcName,
+
+                iterable: iterable
+            };
+
+            return standardFunction(options, function(pred, iterable) {
+                var it = iterable.iterator();
+                var index = -1;
+                var one = null;
+
+                while (it.next()) {
+                    index += 1;
+                    var curr = it.current();
+
+                    if (pred(curr, index)) {
+                        if (one) {
+                            throw new Error('iter.' + funcName + 
+                                            ': sequence contains more than one matching element.');
+                        }
+                        else {
+                            one = { value: curr };
+                        }
+                    }
+                }
+
+                return one;
+            });
+        };
+
+        Iterable.prototype.one = function(predOpt, $this) {
+            var result = internalOne(this, 'one', predOpt, $this);
+
+            if (result) {
+                return result.value;
+            }
+            else if (predOpt) {
+                throw new Error('iter.one: sequence contains no elements satisfying the predicate.');
+            }
+            else {
+                throw new Error('iter.one: sequence contains no elements.');
+            }
+        };
+
+        Iterable.prototype.oneOrDefault = function(defaultValue, predOpt, $this) {
+            var result = internalOne(this, 'oneOrDefault', predOpt, $this);
+
+            if (result) {
+                return result.value;
+            }
+            else {
+                return defaultValue;
+            }
+        };
+    })(Iterable);
 
     // TODO:
-    // takeWhile, skipWhile
     // seqMap
     // one 
     // shuffle
-    // GroupBy
     // InnerJoin
     // LeftJoin
     // CrossJoin ??
