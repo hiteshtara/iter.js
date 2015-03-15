@@ -696,85 +696,203 @@
         });
     };
 
-    var SkipIterator = function($iterator, $skip) {
-        this.$$iterator = $iterator;
-        this.$$skip = $skip;
-    };
+    Iterable.prototype.skip = (function() {
+        var SkipIterator = function($iterator, $skip) {
+            this.$$iterator = $iterator;
+            this.$$skip = $skip;
+        };
 
-    SkipIterator.prototype.next = function() {
-        while (this.$$iterator.next()) {
-            if (this.$$skip !== 0) {
-                this.$$skip -= 1;
-                continue;
+        SkipIterator.prototype.next = function() {
+            while (this.$$iterator.next()) {
+                if (this.$$skip !== 0) {
+                    this.$$skip -= 1;
+                    continue;
+                }
+                else {
+                    return true;
+                }
             }
-            else {
+
+            return false;
+        };
+
+        SkipIterator.prototype.current = function() {
+            return this.$$iterator.current();
+        };
+
+        return function(count) {
+            count = Number(count);
+            var that = this;
+
+            if (!isFinite(count)) {
+                throw new Error(
+                    'iter.skip: invalid argument value.');
+            }
+
+            count = (count < 0 ? 0 : count);
+
+            return new Iterable(function() {
+                var it = that.iterator();
+                return new SkipIterator(it, count);
+            });
+        };
+    })();
+
+    Iterable.prototype.skipWhile = (function() {
+        var SkipWhileIterator = function($iterator, $pred) {
+            this.$$iterator = $iterator;
+            this.$$pred = $pred;
+            this.$$index = -1;
+            this.$$skipEnded = false;
+        };
+
+        SkipWhileIterator.prototype.next = function() {
+            while (this.$$iterator.next()) {
+                this.$$index += 1;
+
+                var curr = this.$$iterator.current();
+                var index = this.$$index;
+
+                if (!this.$$skipEnded && this.$$pred(curr, index)) {
+                    continue;
+                }
+                else {
+                    this.$$skipEnded = true;
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        SkipWhileIterator.prototype.current = function() {
+            return this.$$iterator.current();
+        };
+
+        return function(pred, $this) {
+           var options = {
+                func: pred,
+                context: $this,
+
+                funcArgName: 'pred',
+                methodName: 'skipWhile',
+
+                iterable: this
+            };
+
+            return standardFunction(options, function(pred, iterable) {
+                return new Iterable(function() {
+                    var it = iterable.iterator();
+                    return new SkipWhileIterator(it, pred);
+                });
+            });
+       };
+    })();
+
+    Iterable.prototype.take = (function() {
+        var TakeIterator = function($iterator, $take) {
+            this.$$iterator = $iterator;
+            this.$$take = $take;
+        };
+
+        TakeIterator.prototype.next = function() {
+            if (this.$$take === 0) {
+                return false;
+            }
+
+            if (this.$$iterator.next()) {
+                this.$$take -= 1;
                 return true;
             }
-        }
+            else {
+                return false;
+            }
+        };
 
-        return false;
-    };
+        TakeIterator.prototype.current = function() {
+            return this.$$iterator.current();
+        };
 
-    SkipIterator.prototype.current = function() {
-        return this.$$iterator.current();
-    };
+        return function(count) {
+            count = Number(count);
+            var that = this;
 
-    Iterable.prototype.skip = function(count) {
-        count = Number(count);
-        var that = this;
+            if (!isFinite(count)) {
+                throw new Error(
+                    'iter.take: invalid argument value.');
+            }
 
-        if (!isFinite(count)) {
-            throw new Error(
-                'iter.skip: invalid argument value.');
-        }
+            count = (count < 0 ? 0 : count);
 
-        count = (count < 0 ? 0 : count);
+            return new Iterable(function() {
+                var it = that.iterator();
+                return new TakeIterator(it, count);
+            });
+        };
+    })();
+    
+    Iterable.prototype.takeWhile = (function() {
+        var TakeWhileIterator = function($iterator, $pred) {
+            this.$$iterator = $iterator;
+            this.$$pred = $pred;
+            this.$$ended = false;
+            this.$$index = -1;
+        };
 
-        return new Iterable(function() {
-            var it = that.iterator();
-            return new SkipIterator(it, count);
-        });
-    };
+        TakeWhileIterator.prototype.next = function() {
+            if (this.$$ended) {
+                return false;
+            }
 
-    var TakeIterator = function($iterator, $take) {
-        this.$$iterator = $iterator;
-        this.$$take = $take;
-    };
+            if (this.$$iterator.next()) {
+                this.$$index += 1;
+                
+                var curr = this.$$iterator.current();
+                var index = this.$$index;
 
-    TakeIterator.prototype.next = function() {
-        if (this.$$take === 0) {
-            return false;
-        }
+                if (this.$$pred(curr, index)) {
+                    this.$$current = { value: curr };
+                    return true;
+                }
+                else {
+                    this.$$ended = true;
+                    return false;
+                }
+            }
+            else {
+                this.$$ended = true;
+                return false;
+            }
+        };
 
-        if (this.$$iterator.next()) {
-            this.$$take -= 1;
-            return true;
-        }
-        else {
-            return false;
-        }
-    };
+        TakeWhileIterator.prototype.current = function() {
+            if (!this.$$current) {
+                throw new Error('iter.Iterator: this function can be called only when ' +
+                                'previous call to next() returns true.');
+            }
 
-    TakeIterator.prototype.current = function() {
-        return this.$$iterator.current();
-    };
+            return this.$$current.value;
+        };
 
-    Iterable.prototype.take = function(count) {
-        count = Number(count);
-        var that = this;
+        return function(pred, $this) {
+           var options = {
+                func: pred,
+                context: $this,
 
-        if (!isFinite(count)) {
-            throw new Error(
-                'iter.take: invalid argument value.');
-        }
+                funcArgName: 'pred',
+                methodName: 'takeWhile',
 
-        count = (count < 0 ? 0 : count);
+                iterable: this
+            };
 
-        return new Iterable(function() {
-            var it = that.iterator();
-            return new TakeIterator(it, count);
-        });
-    };
+            return standardFunction(options, function(pred, iterable) {
+                return new Iterable(function() {
+                    var it = iterable.iterator();
+                    return new TakeWhileIterator(it, pred);
+                });
+            });
+        };
+    })();
 
     Iterable.prototype.join = function(separator) {
         var array = this.toArray();
