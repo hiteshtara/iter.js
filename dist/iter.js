@@ -154,6 +154,112 @@
         return result;
     };
 
+    var ArrayKeyHashtable = (function() {
+        var ArrayKeyHashtable = function ArrayKeyHashtable() {
+            this.items = Object.create(null);
+        };
+
+        var computeHash = function(key) {
+            return key.join('#');
+        };
+
+        var keysEqual = function(leftKey, rightKey) {
+            if (leftKey.length !== rightKey.length) {
+                return false;
+            }
+
+            for (var i = 0; i < leftKey.length; i += 1) {
+                if (leftKey[i] !== rightKey[i]) {
+                    return false;
+                }
+            }
+
+            return true;
+        };
+
+        var getCollisionList = function(hashtable, key, options) {
+            if (!isArray(key)) {
+                throw new TypeError('key must be array of primitives.');
+            }
+
+            var items = hashtable.items;
+            var hash = computeHash(key);
+
+            var collisionList = items[hash + '$'];
+
+            if (!collisionList && options && options.insertIfNotExist) {
+                items[hash + '$'] = collisionList = [];
+            }
+
+            return collisionList;
+        };
+
+        var getObjectWithKey = function(collisionList, key) {
+            for (var i = 0; i < collisionList.length; i += 1) {
+                if (keysEqual(collisionList[i].key, key)) {
+                    return collisionList[i];
+                }
+            }
+
+            return null;
+        };
+
+        ArrayKeyHashtable.prototype.put = function(key, value) {
+            var collisionList = getCollisionList(this, key, { insertIfNotExist: true });
+            
+            var obj = getObjectWithKey(collisionList, key);
+            if (obj) {
+                obj.value = value;
+            }
+            else {
+                collisionList.push({ key: key, value: value });
+            }
+        };
+
+        var internalGet = function(hashtable, key) {
+            var collisionList = getCollisionList(hashtable, key, { insertIfNotExist: false });
+            if (!collisionList) {
+                return null;
+            }
+
+            return getObjectWithKey(collisionList, key);
+        };
+
+        ArrayKeyHashtable.prototype.get = function(key) {
+            var obj = internalGet(this, key);
+            return (obj ? obj.value : undefined);
+        };
+
+        ArrayKeyHashtable.prototype.contains = function(key) {
+            return (internalGet(this, key) !== null);
+        };
+
+        ArrayKeyHashtable.prototype.toArray = function() {
+            var result = [];
+            var items = this.items;
+            var hasOwnProperty = {}.hasOwnProperty;
+
+            for (var hash in items) {
+                if (!hasOwnProperty.call(items, hash)) {
+                    continue;
+                }
+
+                var collisionList = items[hash];
+
+                for(var i = 0; i < collisionList.length; i += 1) {
+                    result.push({
+                        key: collisionList[i].key,
+                        value: collisionList[i].value
+                    });
+                }
+            }
+
+            return result;
+        };
+
+        return ArrayKeyHashtable;
+    })();
+
     var ArrayIterator = function($array) {
         this.$$index = -1;
         this.$$array = $array;
@@ -1089,45 +1195,16 @@
     // groupby('$.age') groupby('$.age', '$.firstname', '$.lastname')
     // groupby('Math.floor($index/5)')
     Iterable.prototype.groupBy = (function() {
-        var keysEqual = function(leftKey, rightKey) {
-            if (leftKey.length !== rightKey.length) {
-                return false;
-            }
-
-            for (var i = 0; i < leftKey.length; i += 1) {
-                if (leftKey[i] !== rightKey[i]) {
-                    return false;
-                }
-            }
-
-            return true;
-        };
-
-        var computeHash = function(key) {
-            // Array.join, be careful with __proto__
-            return key.join(',') + '$';
-        };
-
+        
         var addValueToGrouping = function(groupping, key, value) {
-            var keyHash = computeHash(key);
+            // group is array of values
+            var group = groupping.get(key);
 
-            var listForHash = groupping[keyHash];
-            if (listForHash) {
-                for (var i = 0; i < listForHash.length; i += 1) {
-                    if (keysEqual(listForHash[i].key, key)) {
-                        listForHash[i].values.push(value);
-                        return;
-                    }
-                }
-            }
-
-            var newEntry = { key: key, values: [value] };
-
-            if (listForHash) {
-                listForHash.push(newEntry);
+            if (group) {
+                group.push(value);
             }
             else {
-                groupping[keyHash] = [newEntry];
+                groupping.put(key, [value]);
             }
         };
 
@@ -1146,21 +1223,29 @@
 
         var grouppingToArray = function(groupping, isSingleSelectorKey) {
             var result = [];
+            var keyGroupPairs = groupping.toArray();
 
-            for (var hash in groupping) {
-                if (!Object.prototype.hasOwnProperty.call(groupping, hash)) {
-                    continue;
-                }
+            for(var i = 0; i < keyGroupPairs.length; i += 1) {
+                var groupElements = iter(keyGroupPairs[i].value);
 
-                var list = groupping[hash];
-                for(var i = 0; i < list.length; i += 1) {
-                    var tmp = iter(list[i].values);
-                    tmp.key = (isSingleSelectorKey ? list[i].key[0] : list[i].key);
-                    result.push(tmp);
-                }
+                groupElements.key = (isSingleSelectorKey ? 
+                                     keyGroupPairs[i].key[0] :
+                                     keyGroupPairs[i].key);
+                
+                result.push(groupElements);
             }
 
             return result;
+        };
+
+        var createSelector = function(selector) {
+            throwIfNotQuickOrFunction(selector, 'arguments', 'groupBy');
+                
+            if (isQuick(selector)) {
+                selector = quickToFunction(selector);
+            }
+
+            return selector;
         };
 
         return function() {
@@ -1171,13 +1256,7 @@
             var selectors = toArray(arguments);
   
             for (var i = 0; i < selectors.length; i += 1) {
-                var selector = selectors[i];
-                
-                throwIfNotQuickOrFunction(selector, 'arguments', 'groupBy');
-                
-                if (isQuick(selector)) {
-                    selectors[i] = quickToFunction(selector);
-                }
+                selectors[i] = createSelector(selectors[i]);   
             }
 
             var keySelector = createKeySelector(selectors);
@@ -1186,7 +1265,7 @@
             var that = this;
 
             return new Iterable(function() {
-                var groupping = Object.create(null);
+                var groupping = new ArrayKeyHashtable();
 
                 var it = that.iterator();
                 while (it.next()) {
@@ -1484,7 +1563,6 @@
 
     // TODO:
     // seqMap
-    // one 
     // shuffle
     // InnerJoin
     // LeftJoin
