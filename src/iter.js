@@ -1561,15 +1561,30 @@
         };
     })(Iterable);
 
+    Iterable.prototype.materialize = function() {
+        var materializedData = this.toArray();
+
+        return new Iterable(function() {
+            return new ArrayIterator(materializedData);
+        });
+    };
+
+    Iterable.prototype.isEmpty = function() {
+        var it = this.iterator();
+        if (it.next()) {
+            return false;
+        }
+        else {
+            return true;
+        }
+    };
+
     // TODO:
     // seqMap
     // shuffle
     // InnerJoin
     // LeftJoin
     // CrossJoin ??
-    // isEmpty?
-    // materialize <- memoization
-    // iter.zip
     // iter.interleave
     // iter.concat(it1, it2, it3)
     // 
@@ -1592,6 +1607,15 @@
         }
         else {
             throw new Error("iter: Only arrays, object and functions can be iterated.");
+        }
+    };
+
+    var toIterable = function(obj) {
+        if (obj instanceof Iterable) {
+            return obj;
+        }
+        else {
+            return iter(obj);
         }
     };
 
@@ -1709,5 +1733,69 @@
             parameters: parameters
         });
     };
+
+    iter.zipWith = (function() {
+        var ZipWithIterator = function(leftIterator, rightIterator, mergeFunction) {
+            this.$$left = leftIterator;
+            this.$$right = rightIterator;
+            this.$$mergeFunction = mergeFunction;
+            this.$$end = false;
+        };
+
+        ZipWithIterator.prototype.next = function() {
+            if (this.$$end) {
+                return false;
+            }
+
+            if (!this.$$left.next() || !this.$$right.next()) {
+                this.$$end = true;
+                return false;
+            }
+
+            var curr = this.$$mergeFunction(this.$$left.current(), this.$$right.current());
+            this.$$current = { value: curr };
+
+            return true;
+        };
+
+        ZipWithIterator.prototype.current = function() {
+            if (this.$$current) {
+                return this.$$current.value;
+            }
+            else {
+                throw new Error('Iterator.current: call next() before current().'); 
+            }
+        };
+
+        return function(leftIterable, rightIterable, mergeFunction, $this) {
+            if (arguments.length < 3) {
+                throw new Error('iter.zipWith: missing arguments. ' + 
+                                'To merge two iterables use syntax ' +
+                                'iter.zip(leftIterable, rightIterable, mergeFunction);');
+            }
+
+            leftIterable = toIterable(leftIterable);
+            rightIterable = toIterable(rightIterable);
+
+            var options = {
+                func: mergeFunction,
+                funcParams: ['$left', '$right'],
+                funcResult: QUICK_RESULT.ANY,
+                context: $this,
+
+                funcArgName: 'mergeFunction',
+                methodName: 'iter.zipWith',
+            };
+
+            return standardFunction(options, function(mergeFunction) {
+                return new Iterable(function() {
+                    var leftIterator = leftIterable.iterator();
+                    var rightIterator = rightIterable.iterator();
+
+                    return new ZipWithIterator(leftIterator, rightIterator, mergeFunction);
+                });
+            });
+         };
+    })();
 
 })(typeof window === "undefined" ? global : window);
