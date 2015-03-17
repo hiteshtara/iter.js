@@ -1586,7 +1586,6 @@
     // LeftJoin
     // CrossJoin ??
     // iter.interleave
-    // iter.concat(it1, it2, it3)
     // 
 
     var iter = global.iter = function(obj) {
@@ -1796,6 +1795,56 @@
                 });
             });
          };
+    })();
+
+    iter.concat = (function() {
+        var ConcatIterator = function(iterators) {
+            this.$$iterators = iterators;
+            this.$$currentIterator = 0;
+        };
+
+        ConcatIterator.prototype.next = function() {
+            while ((this.$$currentIterator < this.$$iterators.length) &&
+                   !this.$$iterators[this.$$currentIterator].next()) 
+            {
+                this.$$currentIterator += 1;
+            }
+
+            if (this.$$currentIterator < this.$$iterators.length) {
+                var curr = this.$$iterators[this.$$currentIterator].current();
+                this.$$current = { value: curr };
+                return true;
+            }
+            else {
+                return false;
+            }
+        };
+
+        ConcatIterator.prototype.current = function() {
+            if (this.$$current) {
+                return this.$$current.value;
+            }
+            else {
+                throw new Error('Iterator.current: call next() before call to current().');
+            }
+        };
+
+        return function() {
+            var iterables = toArray(arguments);
+
+            if (!iterables.length) {
+                return iter.empty();
+            }
+            else {
+                return new Iterable(function() {
+                    var iterators = iterables.map(function(x) {
+                        return toIterable(x).iterator();
+                    });
+
+                    return new ConcatIterator(iterators);
+                });
+            }
+        };
     })();
 
 })(typeof window === "undefined" ? global : window);
