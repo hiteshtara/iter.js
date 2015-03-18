@@ -1585,7 +1585,7 @@
     // InnerJoin
     // LeftJoin
     // CrossJoin ??
-    // 
+    // contains
 
     var iter = global.iter = function(obj) {
         if (isArray(obj)) {
@@ -1769,7 +1769,7 @@
             if (arguments.length < 3) {
                 throw new Error('iter.zipWith: missing arguments. ' + 
                                 'To merge two iterables use syntax ' +
-                                'iter.zip(leftIterable, rightIterable, mergeFunction);');
+                                'iter.zip(leftIterable, rightIterable, mergeFunction).');
             }
 
             leftIterable = toIterable(leftIterable);
@@ -1899,6 +1899,83 @@
                 });
             }
         };   
+    })();
+
+    iter.cross = (function() {
+        var CrossIterator = function(leftIterator, rightIterable, mergeFunction) {
+            this.$$left = leftIterator;
+            this.$$right = rightIterable;
+            this.$$data = [];
+            this.$$mergeFunction = mergeFunction;
+            this.$$dataIndex = this.$$data.length;
+        };
+
+        CrossIterator.prototype.next = function() {
+            while (true) {
+                if (this.$$dataIndex >= this.$$data.length) {
+                    if (this.$$left.next()) {
+                        this.$$dataIndex = 0;
+                        this.$$data = this.$$right.toArray();
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else {
+                    var curr = this.$$mergeFunction(
+                        this.$$left.current(),
+                        this.$$data[this.$$dataIndex]);
+
+                    this.$$dataIndex += 1;
+
+                    if (curr === undefined) {
+                        continue;
+                    }
+                    else {
+                        this.$$current = { value: curr };
+                        return true;
+                    }
+                }
+            }
+        };
+
+        CrossIterator.prototype.current = function() {
+            if (this.$$current) {
+                return this.$$current.value;
+            }
+            else {
+                throw new Error('Iterator.current: call next() before current().'); 
+            }
+        };
+
+        // mergeFunction -> return undefined to skip
+        return function(leftIterable, rightIterable, mergeFunction, $this) {
+             if (arguments.length < 3) {
+                throw new Error('iter.cross: missing arguments. ' + 
+                                'To cross join two iterables use syntax ' +
+                                'iter.cross(leftIterable, rightIterable, mergeFunction).');
+            }
+
+            leftIterable = toIterable(leftIterable);
+            rightIterable = toIterable(rightIterable);
+
+            var options = {
+                func: mergeFunction,
+                funcParams: ['$left', '$right'],
+                funcResult: QUICK_RESULT.ANY,
+                context: $this,
+
+                funcArgName: 'mergeFunction',
+                methodName: 'iter.cross',
+            };
+
+            return standardFunction(options, function(mergeFunction) {
+                return new Iterable(function() {
+                    var leftIterator = leftIterable.iterator();
+                    return new CrossIterator(leftIterator, rightIterable, mergeFunction);
+                });
+            });
+        };
     })();
 
 })(typeof window === "undefined" ? global : window);
