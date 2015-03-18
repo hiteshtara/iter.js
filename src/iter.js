@@ -1585,7 +1585,6 @@
     // InnerJoin
     // LeftJoin
     // CrossJoin ??
-    // iter.interleave
     // 
 
     var iter = global.iter = function(obj) {
@@ -1845,6 +1844,61 @@
                 });
             }
         };
+    })();
+
+    iter.interleave = (function() {
+        var InterleaveIterator = function(iterators) {
+            this.$$iterators = iterators;
+            this.$$currentIterator = -1;
+        };
+
+        InterleaveIterator.prototype.next = function() {
+            while (this.$$iterators.length) {
+                this.$$currentIterator += 1;
+                while (this.$$currentIterator >= this.$$iterators.length) {
+                    this.$$currentIterator -= this.$$iterators.length; 
+                }
+
+                if (!this.$$iterators[this.$$currentIterator].next()) {
+                    this.$$iterators.splice(this.$$currentIterator, 1);
+                }
+                else {
+                    this.$$current = {
+                        value: this.$$iterators[this.$$currentIterator].current()
+                    };
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        InterleaveIterator.prototype.current = function() {
+            if (this.$$current) {
+                return this.$$current.value;
+            }
+            else {
+                throw new Error('Iterator.current: call next() before call to current().');
+            }
+        };
+
+        return function() {
+            var iterables = toArray(arguments);
+
+            if (!iterables.length) {
+                throw new Error('iter.interleave: missing argument, ' +
+                                'specify at least one iterable.');
+            }
+            else {
+                return new Iterable(function() {
+                    var iterators = iterables.map(function(x) {
+                        return toIterable(x).iterator();
+                    });
+
+                    return new InterleaveIterator(iterators);
+                });
+            }
+        };   
     })();
 
 })(typeof window === "undefined" ? global : window);
