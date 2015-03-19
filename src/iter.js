@@ -1579,13 +1579,68 @@
         }
     };
 
-    // TODO:
-    // seqMap
-    // shuffle
-    // InnerJoin
-    // LeftJoin
-    // CrossJoin ??
-    // contains
+    Iterable.prototype.contains = function(value) {
+        if (!arguments.length) {
+            throw new Error('iter.contains: missing argument "value"');
+        }
+
+        var it = this.iterator();
+
+        while (it.next()) {
+            if (it.current() === value) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    Iterable.prototype.seqMap = (function() {
+        var SeqMapIterator = function(sequences) {
+            this.$$sequences = sequences;
+            this.$$currentSequence = null;
+            this.$$end = false;
+        };
+
+        SeqMapIterator.prototype.next = function() {
+            if (this.$$end) {
+                return false;
+            }
+
+            while (!this.$$currentSequence || !this.$$currentSequence.next()) {
+                if (this.$$sequences.next()) {
+                    this.$$currentSequence = toIterable(this.$$sequences.current()).iterator();
+                }
+                else {
+                    this.$$end = true;
+                    return false;
+                }
+            }
+        
+            this.$$current = { 
+                value: this.$$currentSequence.current()
+            };
+            return true;
+        };
+
+        SeqMapIterator.prototype.current = function() {
+            if (this.$$current) {
+                return this.$$current.value;
+            }
+            else {
+                throw new Error('Iterator.current: call next() before call to current().');
+            }
+        };
+
+        return function(map, $this) {
+            var sequences = this.map(map, $this);
+
+            return new Iterable(function() {
+                var sequencesIterator = sequences.iterator();
+                return new SeqMapIterator(sequencesIterator);
+            });
+        };
+    })();
 
     var iter = global.iter = function(obj) {
         if (isArray(obj)) {
@@ -1690,6 +1745,50 @@
             });
         }
     };
+
+    iter.repeat = (function() {
+        var RepeatIterator = function(value, times) {
+            this.$$value = value;
+            this.$$times = times;
+            this.$$t = -1;
+        };
+
+        RepeatIterator.prototype.next = function() {
+            if (this.$$times === undefined) {
+                return true;
+            }
+            else if (this.$$t < this.$$times - 1) {
+                this.$$t += 1;
+                return true;
+            }
+            else {
+                return false;
+            }
+        };
+
+        RepeatIterator.prototype.current = function() {
+            return this.$$value;
+        };
+
+        return function(value, times) {
+            if (!arguments.length) {
+                throw new Error('iter.repeat: missing argument "value".');
+            }
+
+            if (times === undefined) {
+                // repeat forever
+                return new Iterable(function() {
+                    return new RepeatIterator(value);
+                });
+            }
+            else {
+                times = Math.max(0, Number(times));
+                return new Iterable(function() {
+                    return new RepeatIterator(value, times);
+                });
+            }
+        };
+    })();
 
     var EMPTY_ITERATOR_FUNCTION = function() { return undefined; };
     iter.empty = function() {
