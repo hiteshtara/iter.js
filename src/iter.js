@@ -1881,7 +1881,7 @@
                 context: $this,
 
                 funcArgName: 'mergeFunction',
-                methodName: 'iter.zipWith',
+                methodName: 'zipWith',
             };
 
             return standardFunction(options, function(mergeFunction) {
@@ -2065,7 +2065,7 @@
                 context: $this,
 
                 funcArgName: 'mergeFunction',
-                methodName: 'iter.cross',
+                methodName: 'cross',
             };
 
             return standardFunction(options, function(mergeFunction) {
