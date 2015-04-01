@@ -2,20 +2,20 @@
 # iter.js - adds Iterators to JavaScript
 
 ## Introduction
-This library allows you to write data processing statements using syntax similar to C# LINQ or Java 8 streams. For example:
+This library allows you to write data processing statements using syntax similar to C# LINQ or Java 8 streams, for example:
 ```javascript
 var firstTenPrimes = iter.range(2, 100)
     .filter(function(n) { return isPrime(n); })
     .take(10)
     .toArray();
 ```
-additionaly it provides shorter syntax named "quick" that alows you to drop `function` and `return` from lambda expressions e.g:
+additionaly it provides shorter syntax named _quick_ that alows you to drop `function` and `return` from lambda expressions e.g:
 ```javascript
 var onlyEven = iter.range(0, 100)
     .filter('$ % 2 === 0')
     .toArray();
 ```
-In this case `'$ % 2 === 0'` is a quick expression (quicks are compiled using `eval` and they doesn't support closures).
+Here `'$ % 2 === 0'` is a _quick_ expression (_quicks_ are compiled using `eval` and they doesn't support closures).
 
 ## What can be iterated over?
 Currently iter.js supports iterating over arrays, objects and generators (functions).
@@ -56,9 +56,9 @@ will print:
 Object {key: "prop1", value: "foo"}
 Object {key: "prop2", value: "bar"}
 ```
-**Iteration over object returns only enumerable and own properties of object.**
+**Only enumerable and own properties of object are returned by iterator.**
 
-In current version of iter.js key value pairs are mutable (that's it you can change key and/or value property of pair).
+In current version of iter.js key value pairs are mutable (that's it you can change key and/or value property of pair), but in future version of the library this behaviour may change.
 
 ### Iterating over generators (functions)
 Functions can be used as sequence generators, in this case sequence ends when function returns `undefined`.
@@ -83,9 +83,83 @@ var arr = [1,2,3,4];
 
 iter(function() { return arr.pop(); })
 ```
-creates a sequence that consists of only four elements (when array is empty `pop()` returns `undefined` which ends sequence).
+creates a sequence that consists of only four elements (when array is empty `pop()` returns `undefined` which ends the sequence).
 
 ## Iterable methods
+
+### `Iterable.prototype.forEach(action[, context])`
+<dl>
+  <dt><strong>action</strong></dt>
+  <dd>Function that is invoked for each of the sequence elements. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+
+  <dt><strong>context</strong></dt>
+  <dd>Optional. Value to use as <code>this</code> when executing <code>action</code>.</dd>
+</dl>
+
+`forEach` invokes `action` for each element of the sequence, e.g.
+```javascript
+iter(['foo', 'bar', 'baz']).forEach(function(x, index) {
+	console.log('x: ' + x + ', index: ' + index);
+});
+// Output:
+// x: foo, index: 0
+// x: bar, index: 1
+// x: baz, index: 2
+```
+
+Optionally you can specify value of `this` to use when calling `action`:
+```javascript
+var context = { sum: 0 }
+
+iter([1, 2, 3]).forEach(function(x) {
+	this.sum += x;
+}, context);
+
+console.log(context.sum);
+// Output:
+// 6
+```
+
+### `Iterable.prototype.isEmpty()`
+Returns `true` if sequence is empty (contains no elements) and `false` otherwise. It evaluates at most one sequence element.
+```javascript
+var result1 = iter([]).isEmpty();
+console.log(result1);
+// Output:
+// true
+
+var result2 = iter([1,2,3]).isEmpty();
+console.log(result2);
+// Output:
+// false
+```
+
+### `Iterable.prototype.some(predicate[, context])`
+<dl>
+  <dt><strong>predicate</strong></dt>
+  <dd>Function that returns either `true` or `false` for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+
+  <dt><strong>context</strong></dt>
+  <dd>Optional. Value to use as <code>this</code> when executing <code>predicate</code>.</dd>
+</dl>
+
+Returns `true` if sequence contains element for which `predicate` returns `true`, otherwise returns `false`. It stops evaluating sequence after it finds an element fulfilling the predicate.
+
+```javascript
+var hasFoo = iter(['foo', 'bar', 'nyu']).some(function(x) {
+	return (x === 'foo');
+});
+console.log(hasFoo);
+// Output:
+// true
+
+var hasAlladin = iter(['foo', 'bar', 'nyu']).some(function(x) {
+	return (x === 'Alladin');
+});
+console.log(hasAlladin);
+// Output:
+// false
+```
 
 ## Helper methods
 

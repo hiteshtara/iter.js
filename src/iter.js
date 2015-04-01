@@ -394,24 +394,24 @@
         return callback(func, iterable);
     };
 
-    Iterable.prototype.forEach = function(func, $this) {
+    Iterable.prototype.forEach = function(action, context) {
         var options = {
-            func: func,
+            func: action,
             funcResult: QUICK_RESULT.VOID,
-            context: $this,
+            context: context,
 
-            funcArgName: 'func',
+            funcArgName: 'action',
             methodName: 'forEach',
 
             iterable: this
         };
 
-        standardFunction(options, function(func, iterable) {
+        standardFunction(options, function(action, iterable) {
             var it = iterable.iterator();
             var index = 0;
 
             while (it.next()) {
-                func(it.current(), index);
+                action(it.current(), index);
                 index += 1;
             }
         });
@@ -424,23 +424,23 @@
 
     var SOME_DEFAULT_PRED = function(x) { return x; };
 
-    Iterable.prototype.some = function(pred, $this) {
+    Iterable.prototype.some = function(predicate, context) {
         var options = {
-            func: (pred === undefined ? SOME_DEFAULT_PRED : pred),
-            context: $this,
+            func: (predicate === undefined ? SOME_DEFAULT_PRED : predicate),
+            context: context,
 
-            funcArgName: 'pred',
+            funcArgName: 'predicate',
             methodName: 'some',
 
             iterable: this
         };
        
-        return standardFunction(options, function(pred, iterable) {
+        return standardFunction(options, function(predicate, iterable) {
             var it = iterable.iterator();
             var index = 0;
             
             while (it.next()) {
-                if (pred(it.current(), index)) {
+                if (predicate(it.current(), index)) {
                     return true;
                 }
                 
