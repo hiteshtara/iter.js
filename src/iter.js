@@ -453,23 +453,23 @@
 
     var EVERY_DEFAULT_PRED = function(x) { return x; };
 
-    Iterable.prototype.every = function(pred, $this) {
+    Iterable.prototype.every = function(predicate, context) {
         var options = {
-            func: (pred === undefined ? EVERY_DEFAULT_PRED : pred),
-            context: $this,
+            func: (predicate === undefined ? EVERY_DEFAULT_PRED : predicate),
+            context: context,
 
-            funcArgName: 'pred',
+            funcArgName: 'predicate',
             methodName: 'every',
 
             iterable: this
         };
        
-        return standardFunction(options, function(pred, iterable) {
+        return standardFunction(options, function(predicate, iterable) {
             var it = iterable.iterator();
             var index = 0;
             
             while (it.next()) {
-                if (!pred(it.current(), index)) {
+                if (!predicate(it.current(), index)) {
                     return false;
                 }
                 
@@ -508,11 +508,11 @@
         return curr;
     };
 
-    Iterable.prototype.count = function(predOpt, $this) {
+    Iterable.prototype.count = function(predicate, context) {
         var it = null;
 
-        if (predOpt) {
-            it = this.filter(predOpt, $this).iterator();
+        if (predicate) {
+            it = this.filter(predicate, context).iterator();
         }
         else {
             it = this.iterator();
@@ -561,21 +561,21 @@
         return this.$$iterator.current();
     };
 
-    Iterable.prototype.filter = function(pred, $this) {
+    Iterable.prototype.filter = function(predicate, context) {
         var options = {
-            func: pred,
-            context: $this,
+            func: predicate,
+            context: context,
 
-            funcArgName: 'pred',
+            funcArgName: 'predicate',
             methodName: 'filter',
 
             iterable: this
         };
 
-        return standardFunction(options, function(pred, iterable) {
+        return standardFunction(options, function(predicate, iterable) {
             return new Iterable(function() {
                 var it = iterable.iterator();
-                return new FilterIterator(it, pred);
+                return new FilterIterator(it, predicate);
             });
         });
     };
@@ -610,22 +610,22 @@
         return this.$$cache;
     };
 
-    Iterable.prototype.map = function(map, $this) {
+    Iterable.prototype.map = function(projection, context) {
         var options = {
-            func: map,
+            func: projection,
             funcResult: QUICK_RESULT.ANY,
-            context: $this,
+            context: context,
 
-            funcArgName: 'map',
+            funcArgName: 'projection',
             methodName: 'map',
 
             iterable: this
         };
         
-        return standardFunction(options, function(map, iterable) {
+        return standardFunction(options, function(projection, iterable) {
             return new Iterable(function() {
                 var it = iterable.iterator();
-                return new MapIterator(it, map);
+                return new MapIterator(it, projection);
             });
         });
     };
