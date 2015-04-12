@@ -656,7 +656,7 @@
         return this.map(mapFunc);
     };
 
-    Iterable.prototype.reduce = function(seed, operation, $this) {
+    Iterable.prototype.reduce = function(seed, operation, context) {
         if (seed === undefined) {
             throw new Error('iter.reduce: missing required argument "seed". ' +
                             'Use iter.reduce1() to perform reduce without having to specify seed.');
@@ -666,7 +666,7 @@
             func: operation,
             funcResult: QUICK_RESULT.ANY,
             funcParams: ['$acc', '$', '$index'],
-            context: $this,
+            context: context,
 
             funcArgName: 'operation',
             methodName: 'reduce',
@@ -689,12 +689,12 @@
     };
 
     // call reduce1('$acc + $')
-    Iterable.prototype.reduce1 = function(operation, $this) {
+    Iterable.prototype.reduce1 = function(operation, context) {
         var options = {
             func: operation,
             funcResult: QUICK_RESULT.ANY,
             funcParams: ['$acc', '$', '$index'],
-            context: $this,
+            context: context,
 
             funcArgName: 'operation',
             methodName: 'reduce1',
@@ -721,11 +721,11 @@
         });
     };
 
-    Iterable.prototype.sum = function(selector, $this) {
+    Iterable.prototype.sum = function(selector, context) {
         var options = {
             func: (selector === undefined ? IDENTITY_FUNCTION : selector),
             funcResult: QUICK_RESULT.ANY,
-            context: $this,
+            context: context,
 
             funcArgName: 'selector',
             methodName: 'sum',
@@ -748,11 +748,11 @@
         });
     };
 
-    Iterable.prototype.product = function(selector, $this) {
+    Iterable.prototype.product = function(selector, context) {
         var options = {
             func: (selector === undefined ? IDENTITY_FUNCTION : selector),
             funcResult: QUICK_RESULT.ANY,
-            context: $this,
+            context: context,
 
             funcArgName: 'selector',
             methodName: 'product',
@@ -775,11 +775,11 @@
         });
     };
 
-    Iterable.prototype.avg = function(selector, $this) {
+    Iterable.prototype.avg = function(selector, context) {
         var options = {
             func: (selector === undefined ? IDENTITY_FUNCTION : selector),
             funcResult: QUICK_RESULT.ANY,
-            context: $this,
+            context: context,
 
             funcArgName: 'selector',
             methodName: 'avg',
@@ -875,12 +875,12 @@
             return this.$$iterator.current();
         };
 
-        return function(pred, $this) {
+        return function(predicate, context) {
            var options = {
-                func: pred,
-                context: $this,
+                func: predicate,
+                context: context,
 
-                funcArgName: 'pred',
+                funcArgName: 'predicate',
                 methodName: 'skipWhile',
 
                 iterable: this

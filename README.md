@@ -137,7 +137,7 @@ console.log(result2);
 ### `Iterable.prototype.some(predicate[, context])`
 <dl>
   <dt><strong>predicate(element, index)</strong></dt>
-  <dd>Function that returns either `true` or `false` for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+  <dd>Function that returns either <code>true</code> or <code>false</code> for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
 
   <dt><strong>context</strong></dt>
   <dd>Optional. Value to use as <code>this</code> when executing <code>predicate</code>.</dd>
@@ -164,7 +164,7 @@ console.log(hasAlladin);
 ### `Iterable.prototype.every(predicate[, context])`
 <dl>
   <dt><strong>predicate(element, index)</strong></dt>
-  <dd>Function that returns either `true` or `false` for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+  <dd>Function that returns either <code>true</code> or <code>false</code> for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
 
   <dt><strong>context</strong></dt>
   <dd>Optional. Value to use as <code>this</code> when executing <code>predicate</code>.</dd>
@@ -232,7 +232,7 @@ console.log(result2);
 ### `Iterable.prototype.count([predicate[, context]])`
 <dl>
   <dt><strong>predicate(element, index)</strong></dt>
-  <dd>Function that returns either `true` or `false` for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+  <dd>Function that returns either <code>true</code> or <code>false</code> for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
 
   <dt><strong>context</strong></dt>
   <dd>Optional. Value to use as <code>this</code> when executing <code>predicate</code>.</dd>
@@ -269,7 +269,7 @@ console.log(arr);
 ### `Iterable.prototype.filter(predicate[, context])`
 <dl>
   <dt><strong>predicate(element, index)</strong></dt>
-  <dd>Function that returns either `true` or `false` for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+  <dd>Function that returns either <code>true</code> or <code>false</code> for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
 
   <dt><strong>context</strong></dt>
   <dd>Optional. Value to use as <code>this</code> when executing <code>predicate</code>.</dd>
@@ -364,6 +364,333 @@ var basicData = iter(data)
 console.log(JSON.stringify(basicData))
 //Output:
 // [{"name":"jon","age":33},{"name":"ann","age":32}]
+```
+
+### `Iterable.prototype.reduce(seed, operation, context)`
+<dl>
+  <dt><strong>seed</strong></dt>
+  <dd>Initial value of accumulator.</dd>
+
+  <dt><strong>operation(accumulator, element, index)</strong></dt>
+  <dd>Function that produces new value of accumulator given previous value of accumulator, current element and element 0-based index within sequence.</dd>
+
+  <dt><strong>context</strong></dt>
+  <dd>Optional. Value to use as <code>this</code> when executing <code>operation</code>.</dd>
+</dl>
+
+Performs [reduce](http://en.wikipedia.org/wiki/Fold_%28higher-order_function%29) (sometimes called fold-left or agreegate) operation on sequence. `operation` is invoked only once for each sequence element. Elements are processed in order in which they appear in sequence. If sequence is empty `reduce` returns `seed` value.
+
+Following call to `reduce`
+```javascript
+var result = iter([el1, el2, el3])
+	.reduce(seed, op);
+```
+is equivalent to
+```javascript
+var acc = seed;
+acc = op(acc, el1);
+acc = op(acc, el2);
+acc = op(acc, el3);
+
+var result = acc;
+```
+
+```javascript
+var data = [1,2,3,4,5,6,7,8,9];
+
+var sum = iter(data)
+	.reduce(0, function(acc, curr) { return acc + curr; });
+console.log(sum);
+//Output:
+// 45
+
+var product = iter(data)
+    .reduce(1, function(acc, curr) { return acc * curr; });
+console.log(product);
+//Output:
+// 362880
+
+var max = iter(data)
+	.reduce(data[0], function(acc, curr) { return (acc < curr ? curr : acc); });
+console.log(max);
+//Output:
+// 9
+
+var joined = iter(data)
+	.map(String)
+    .reduce('start', function(acc, curr) { return acc + '-' + curr; });
+console.log(joined);
+//Output:
+// start-1-2-3-4-5-6-7-8-9
+```
+
+### `Iterable.prototype.reduce1(operation, context)`
+<dl>
+  <dt><strong>operation(accumulator, element, index)</strong></dt>
+  <dd>Function that produces new value of accumulator given previous value of accumulator, current element and element 0-based index within sequence.</dd>
+
+  <dt><strong>context</strong></dt>
+  <dd>Optional. Value to use as <code>this</code> when executing <code>operation</code>.</dd>
+</dl>
+
+Performs [reduce](http://en.wikipedia.org/wiki/Fold_%28higher-order_function%29) (sometimes called fold-left or agreegate) operation on sequence. `operation` is invoked only once for each sequence element. Elements are processed in order in which they appear in sequence. Sequence cannot be empty, if it is `reduce1` will throw `Error('sequence contains no elements')` exception.
+
+The following call to `reduce1`
+```javascript
+var result = iter([el1, el2, el3])
+	.reduce1(op);
+```
+is equivalent to
+```javascript
+var acc = op(el1, el2);
+acc = op(acc, el3);
+
+var result = acc;
+```
+```javascript
+var data = [1,2,3,4,5,6,7,8,9];
+
+var sum = iter(data)
+	.reduce1(function(acc, curr) { return acc + curr; });
+console.log(sum);
+//Output:
+// 45
+
+var product = iter(data)
+    .reduce1(function(acc, curr) { return acc * curr; });
+console.log(product);
+//Output:
+// 362880
+
+var max = iter(data)
+	.reduce1(function(acc, curr) { return (acc < curr ? curr : acc); });
+console.log(max);
+//Output:
+// 9
+```
+
+### `Iterable.prototype.sum([selector[, context]])`
+<dl>
+  <dt><strong>selector(element, index)</strong></dt>
+  <dd>Optional. Function that transforms sequence elements into numbers. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+
+  <dt><strong>context</strong></dt>
+  <dd>Optional. Value to use as <code>this</code> when executing <code>selector</code>.</dd>
+</dl>
+
+Returns sum of elements of the sequence if `selector` is not specified, otherwise computes sum of values returned by `selector`. If sequence is empty returns `0`.
+
+```javascript
+var sum1 = iter([1,2,3,4,5]).sum();
+console.log(sum1);
+//Output:
+// 15
+
+var sum2 = iter(['foo','bar','baz'])
+	.sum(function(x) { return x.length; });
+console.log(sum2);
+//Output:
+// 9
+```
+
+### `Iterable.prototype.product([selector[, context]])`
+<dl>
+  <dt><strong>selector(element, index)</strong></dt>
+  <dd>Optional. Function that transforms sequence elements into numbers. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+
+  <dt><strong>context</strong></dt>
+  <dd>Optional. Value to use as <code>this</code> when executing <code>selector</code>.</dd>
+</dl>
+
+Returns [product](http://en.wikipedia.org/wiki/Product_%28mathematics%29) of elements of the sequence if `selector` is not specified, otherwise computes product of values returned by `selector`. If sequence is empty returns `1`.
+
+```javascript
+var prod1 = iter([1,2,3,4,5]).product();
+console.log(prod1);
+//Output:
+// 120
+
+var prod2 = iter(['foo','bar','baz'])
+	.product(function(x) { return x.length; });
+console.log(prod2);
+//Output:
+// 27
+```
+
+### `Iterable.prototype.avg([selector[, context]])`
+<dl>
+  <dt><strong>selector(element, index)</strong></dt>
+  <dd>Optional. Function that transforms sequence elements into numbers. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+
+  <dt><strong>context</strong></dt>
+  <dd>Optional. Value to use as <code>this</code> when executing <code>selector</code>.</dd>
+</dl>
+
+Returns [average](http://en.wikipedia.org/wiki/Average) of elements of the sequence if `selector` is not specified, otherwise computes average of values returned by `selector`. If sequence is empty returns `NaN`.
+
+```javascript
+var prod1 = iter([1,2,3,4,5]).avg();
+console.log(prod1);
+//Output:
+// 3
+
+var prod2 = iter(['foo','bar','baz'])
+	.avg(function(x) { return x.length; });
+console.log(prod2);
+//Output:
+// 3
+```
+
+### `Iterable.prototype.skip(count)`
+<dl>
+  <dt><strong>count</strong></dt>
+  <dd>Number of elements to skip.</dd>
+</dl>
+
+Returns new sequence that contains elements of original sequence without first `count` elements. Order of elements is preserved. If `count` is negative or equal zero no elements are skipped. If `count` is greater or equal to number of elements in original sequence then empty sequence is retuned.
+
+```javascript
+var data = ['a', 'b', 'c', 'd', 'e'];
+
+var result1 = iter(data)
+	.skip(3)
+    .toArray();
+console.log(result1);
+//Output:
+// ["d", "e"]
+
+var result2 = iter(data)
+	.skip(200)
+    .toArray();
+console.log(result2);
+//Output:
+// []
+
+var result3 = iter(data)
+	.skip(0)
+    .toArray();
+console.log(result3);
+//Output:
+// ["a", "b", "c", "d", "e"]
+
+var result4 = iter(data)
+	.skip(-1)
+    .toArray();
+console.log(result4);
+//Output:
+// ["a", "b", "c", "d", "e"]
+```
+
+### `Iterable.prototype.skipWhile(predicate[, context])`
+<dl>
+  <dt><strong>predicate(element, index)</strong></dt>
+  <dd>Function that returns either <code>true</code> or <code>false</code> for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+
+  <dt><strong>context</strong></dt>
+  <dd>Optional. Value to use as <code>this</code> when executing <code>predicate</code>.</dd>
+</dl>
+
+Returns sequence that starts at the first element of the original sequence for which `predicate` returned `false` and contains all consecutive elements of the original sequence from that point on. If `predicate` returns `true` for all sequence elements then it returns empty sequence.
+
+```javascript
+var data = ['a', 'b', 'c', 'd', 'e'];
+
+var result1 = iter(data)
+	.skipWhile(function(c) { return c < 'd'; })
+    .toArray();
+console.log(result1);
+//Output:
+// ["d", "e"]
+
+var result2 = iter(data)
+	.skipWhile(function() { return true; })
+    .toArray();
+console.log(result2);
+//Output:
+// []
+
+var result3 = iter(data)
+	.skipWhile(function() { return false; })
+    .toArray();
+console.log(result3);
+//Output:
+// ["a", "b", "c", "d", "e"]
+```
+
+### `Iterable.prototype.take(count)`
+<dl>
+  <dt><strong>count</strong></dt>
+  <dd>Number of elements to take.</dd>
+</dl>
+
+Returns new sequence that contains first `count` elements of the original sequence. Order of elements is preserved. If `count` is negative or equal zero then it returns empty sequence. If `count` is greater than or equal to number of elements in original sequence then it returns new sequence that contains all elements of the original sequence.
+
+```javascript
+var data = ['a', 'b', 'c', 'd', 'e'];
+
+var result1 = iter(data)
+	.take(3)
+    .toArray();
+console.log(result1);
+//Output:
+// ["a", "b", "c"]
+
+var result2 = iter(data)
+	.take(200)
+    .toArray();
+console.log(result2);
+//Output:
+// ["a", "b", "c", "d", "e"]
+
+var result3 = iter(data)
+	.take(0)
+    .toArray();
+console.log(result3);
+//Output:
+// []
+
+var result4 = iter(data)
+	.take(-1)
+    .toArray();
+console.log(result4);
+//Output:
+// []
+```
+
+### `Iterable.prototype.takeWhile(predicate[, context])`
+<dl>
+  <dt><strong>predicate(element, index)</strong></dt>
+  <dd>Function that returns either <code>true</code> or <code>false</code> for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+
+  <dt><strong>context</strong></dt>
+  <dd>Optional. Value to use as <code>this</code> when executing <code>predicate</code>.</dd>
+</dl>
+
+Returns sequence that contains initial elements of the original sequence and that ends at the first element of the original sequence for which `predicate` returned `false`.
+
+```javascript
+var data = ['a', 'b', 'c', 'd', 'e'];
+
+var result1 = iter(data)
+	.takeWhile(function(c) { return c < 'd'; })
+    .toArray();
+console.log(result1);
+//Output:
+// ["a", "b", "c"]
+
+var result2 = iter(data)
+	.takeWhile(function() { return true; })
+    .toArray();
+console.log(result2);
+//Output:
+// ["a", "b", "c", "d", "e"]
+
+var result3 = iter(data)
+	.takeWhile(function() { return false; })
+    .toArray();
+console.log(result3);
+//Output:
+// []
 ```
 
 ## Helper methods
