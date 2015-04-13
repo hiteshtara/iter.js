@@ -1005,13 +1005,13 @@
         return array.join(separator);
     };
     
-    Iterable.prototype.sort = function(comparer, $this) {
+    Iterable.prototype.sort = function(comparer, context) {
         if (comparer !== undefined) {
             if (!isFunction(comparer)) {
                 throw new TypeError('iter.sort: comparer must be a function.');
             }
 
-            comparer = bindContext(comparer, $this);
+            comparer = bindContext(comparer, context);
         }
 
         var that = this;
@@ -1078,12 +1078,12 @@
     };
 
     (function(Iterable) {
-        var internalFirst = function(iterable, funcName, predOpt, $this) {
+        var internalFirst = function(iterable, funcName, predicate, context) {
             var options = {
-                func: (predOpt === undefined ? ALWAYS_TRUE_PREDICATE : predOpt),
-                context: $this,
+                func: (predicate === undefined ? ALWAYS_TRUE_PREDICATE : predicate),
+                context: context,
 
-                funcArgName: 'predOpt',
+                funcArgName: 'predicate',
                 methodName: funcName,
 
                 iterable: iterable
@@ -1106,13 +1106,13 @@
             });
         };
 
-        Iterable.prototype.first = function(predOpt, $this) {
-            var result = internalFirst(this, 'first', predOpt, $this);
+        Iterable.prototype.first = function(predicate, context) {
+            var result = internalFirst(this, 'first', predicate, context);
 
             if (result) {
                 return result.value;
             }
-            else if (predOpt) {
+            else if (predicate) {
                 throw new Error('iter.first: sequence contains no elements satisfying the predicate.');
             }
             else {
@@ -1120,8 +1120,8 @@
             }
         };
 
-        Iterable.prototype.firstOrDefault = function(defaultValue, predOpt, $this) {
-            var result = internalFirst(this, 'firstOrDefault', predOpt, $this);
+        Iterable.prototype.firstOrDefault = function(defaultValue, predicate, context) {
+            var result = internalFirst(this, 'firstOrDefault', predicate, context);
 
             if (result) {
                 return result.value;
@@ -1133,12 +1133,12 @@
     })(Iterable);
 
     (function(Iterable) {
-        var internalLast = function(iterable, funcName, predOpt, $this) {
+        var internalLast = function(iterable, funcName, predicate, context) {
             var options = {
-                func: (predOpt === undefined ? ALWAYS_TRUE_PREDICATE : predOpt),
-                context: $this,
+                func: (predicate === undefined ? ALWAYS_TRUE_PREDICATE : predicate),
+                context: context,
 
-                funcArgName: 'predOpt',
+                funcArgName: 'predicate',
                 methodName: funcName,
 
                 iterable: iterable
@@ -1164,22 +1164,22 @@
             });
         };
 
-        Iterable.prototype.last = function(predOpt, $this) {
-            var result = internalLast(this, 'last', predOpt, $this);
+        Iterable.prototype.last = function(predicate, context) {
+            var result = internalLast(this, 'last', predicate, context);
             
             if (result) {
                 return result.value; 
             }
-            else if (predOpt) {
+            else if (predicate) {
                 throw new Error('iter.last: sequence contains no elements statisfying the predicate.');
             }
             else {
                 throw new Error('iter.last: sequence contains no elements.');
-                }
+            }
         };
 
-        Iterable.prototype.lastOrDefault = function(defaultValue, predOpt, $this) {
-            var result = internalLast(this, 'lastOrDefault', predOpt, $this);
+        Iterable.prototype.lastOrDefault = function(defaultValue, predicate, context) {
+            var result = internalLast(this, 'lastOrDefault', predicate, context);
             
             if (result) {
                 return result.value; 

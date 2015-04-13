@@ -693,6 +693,242 @@ console.log(result3);
 // []
 ```
 
+### `Iterable.prototype.join(separator)`
+<dl>
+  <dt><strong>separator</strong></dt>
+  <dd>String that separates adjacent elements</dd>
+</dl>
+
+Converts all sequence elements to strings then `Array.join` them using specified `separator`.
+```javascript
+var data = [1, 4.32, 'foo', { bar:1 }];
+var str1 = iter(data).join(':::');
+console.log(str1);
+//Output:
+// 1:::4.32:::foo:::[object Object]
+
+var str2 = iter.range(0, 10).join('-');
+console.log(str2);
+//Output:
+// 0-1-2-3-4-5-6-7-8-9
+```
+
+### `Iterable.prototype.sort([comparer[, context]])`
+<dl>
+  <dt><strong>comparer(left, right)</strong></dt>
+  <dd>Optional. Function that compares sequence elements. <code>comparer</code> should return negative number if <code>left</code> is lower than <code>right</code>, zero if
+  	<code>left</code> is equal to <code>right</code>, and positive number 
+  	if <code>left</code> is greater than <code>right</code>.
+  </dd>
+
+  <dt><strong>context</strong></dt>
+  <dd>Optional. Value to use as <code>this</code> when executing <code>comparer</code>.</dd>
+</dl>
+
+Returns new sequence containing sorted elements of the original sequence. Elements are sorted according to `comparer` in ascending order. This method internally uses `Array.sort` to perform sorting of sequence elements, before sorting sequence is first converted to array (this happends on call to `iterator()` method.)
+
+ _Warning: `Array.sort` is not guaranted to perform stable sort._
+
+`comparer` may not be specified when sorting sequences of numbers or strings.
+
+```javascript
+var data1 = [1, 9, 2, 23, 1, 2, 11];
+var sorted1 = iter(data1)
+	.sort()
+    .toArray();
+console.log(sorted1);
+//Output:
+// [1, 1, 11, 2, 2, 23, 9]
+
+var data2 = ['foo', 'aazb', 'zzz', 'bar'];
+var sorted2 = iter(data2)
+	.sort()
+    .toArray();
+console.log(sorted2);
+//Output:
+// ["aazb", "bar", "foo", "zzz"]
+
+var data3 = [
+    { name: 'jon doe', priority: 3 },
+    { name: 'miyako night', priority: 100 },
+    { name: 'maya culpa', priority: 2 }
+];
+var sorted3 = iter(data3)
+	// we want to sort in _descending_ order
+	.sort(function(left, right) { return -(left.priority - right.priority); })
+    .map(function(patient) { return patient.name; })
+    .toArray();
+console.log(sorted3);
+//Output:
+// ["miyako night", "jon doe", "maya culpa"]
+```
+
+### `Iterable.prototype.reverse()`
+
+Returns new sequence that contains elements of the original sequence in the reversed order.
+
+```javascript
+var data = [1, 2, 3, 4, 5];
+var result = iter(data)
+	.reverse()
+    .toArray();
+console.log(result);
+//Output:
+// [5, 4, 3, 2, 1]
+```
+
+### `Iterable.prototype.first([predicate[, context]])`
+<dl>
+  <dt><strong>predicate(element, index)</strong></dt>
+  <dd>Optional. Function that returns either <code>true</code> or <code>false</code> for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+
+  <dt><strong>context</strong></dt>
+  <dd>Optional. Value to use as <code>this</code> when executing <code>predicate</code>.</dd>
+</dl>
+
+Invoked without `predicate` returns first element of the original sequence or throws exception if sequence is empty.
+Invoked with `predicate` returns first element of the original sequence fulfiling the `predicate` or throws exception if there is no such element.
+
+```javascript
+var data = [83, 2, 181, 3, 237, 32];
+var result1 = iter(data)
+	.first();
+console.log(result1);
+//Output:
+// 83
+
+var result2 = iter(data)
+	.first(function(element) { return element > 100; });
+console.log(result2);
+//Output:
+// 181
+
+var result3 = iter([]).first();
+//Output:
+//Error: iter.first: sequence contains no elements.
+
+iter(data).first(function() { return false; });
+//Output:
+//Error: iter.first: sequence contains no elements satisfying the predicate.
+```
+
+### `Iterable.prototype.firstOrDefault(defaultValue, [predicate[, context]])`
+<dl>
+  <dt><strong>defaultValue</strong></dt>
+  <dd>Value to return if sequence is empty or no element fulfills the <code>predicate</code>.</dd>
+  
+  <dt><strong>predicate(element, index)</strong></dt>
+  <dd>Optional. Function that returns either <code>true</code> or <code>false</code> for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+
+  <dt><strong>context</strong></dt>
+  <dd>Optional. Value to use as <code>this</code> when executing <code>predicate</code>.</dd>
+</dl>
+
+Invoked without `predicate` returns first element of the original sequence or returns `defaultValue` if sequence is empty.
+Invoked with `predicate` returns first element of the original sequence fulfiling the `predicate` or returns `defaultValue` if there is no such element.
+
+```javascript
+var data = [83, 2, 181, 3, 237, 32];
+var result1 = iter(data)
+	.firstOrDefault('???');
+console.log(result1);
+//Output:
+// 83
+
+var result2 = iter(data)
+	.firstOrDefault('???', function(element) { return element > 100; });
+console.log(result2);
+//Output:
+// 181
+
+var result3 = iter([]).firstOrDefault('???');
+console.log(result3);
+//Output:
+// ???
+
+var result4 = iter(data)
+	.firstOrDefault(101, function() { return false; });
+console.log(result4);
+//Output:
+// 101
+```
+
+### `Iterable.prototype.last([predicate[, context]])`
+<dl>
+  <dt><strong>predicate(element, index)</strong></dt>
+  <dd>Optional. Function that returns either <code>true</code> or <code>false</code> for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+
+  <dt><strong>context</strong></dt>
+  <dd>Optional. Value to use as <code>this</code> when executing <code>predicate</code>.</dd>
+</dl>
+
+Invoked without `predicate` returns last element of the original sequence or throws exception if sequence is empty.
+Invoked with `predicate` returns last element of the original sequence fulfiling the `predicate` or throws exception if there is no such element.
+
+```javascript
+var data = [83, 2, 181, 3, 237, 32];
+var result1 = iter(data)
+	.last();
+console.log(result1);
+//Output:
+// 32
+
+var result2 = iter(data)
+	.last(function(element) { return element > 100; });
+console.log(result2);
+//Output:
+// 237
+
+var result3 = iter([]).last();
+//Output:
+// Error: iter.last: sequence contains no elements.
+
+iter(data).last(function() { return false; });
+//Output:
+// Error: iter.last: sequence contains no elements statisfying the predicate.
+```
+
+### `Iterable.prototype.lastOrDefault(defaultValue, [predicate[, context]])`
+<dl>
+  <dt><strong>defaultValue</strong></dt>
+  <dd>Value to return if sequence is empty or no element fulfills the <code>predicate</code>.</dd>
+  
+  <dt><strong>predicate(element, index)</strong></dt>
+  <dd>Optional. Function that returns either <code>true</code> or <code>false</code> for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+
+  <dt><strong>context</strong></dt>
+  <dd>Optional. Value to use as <code>this</code> when executing <code>predicate</code>.</dd>
+</dl>
+
+Invoked without `predicate` returns last element of the original sequence or returns `defaultValue` if sequence is empty.
+Invoked with `predicate` returns last element of the original sequence fulfiling the `predicate` or returns `defaultValue` if there is no such element.
+
+```javascript
+var data = [83, 2, 181, 3, 237, 32];
+var result1 = iter(data)
+	.lastOrDefault('???');
+console.log(result1);
+//Output:
+// 32
+
+var result2 = iter(data)
+	.lastOrDefault('???', function(element) { return element > 100; });
+console.log(result2);
+//Output:
+// 237
+
+var result3 = iter([]).lastOrDefault('???');
+console.log(result3);
+//Output:
+// ???
+
+var result4 = iter(data)
+	.lastOrDefault(101, function() { return false; });
+console.log(result4);
+//Output:
+// 101
+```
+
 ## Helper methods
 
 ## Writing custom iterators
