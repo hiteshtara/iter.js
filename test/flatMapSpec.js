@@ -3,10 +3,10 @@
 
 var iter = window.iter;
 
-describe('seqMap', function() {
+describe('flatMap', function() {
     it('maps empty sequence into empty sequence', function() {
         var result = iter([])
-            .seqMap(function() { return [1]; })
+            .flatMap(function() { return [1]; })
             .toArray();
 
         expect(result).toEqual([]);
@@ -14,7 +14,7 @@ describe('seqMap', function() {
 
     it('maps list of empty sequences into empty sequence', function() {
         var result = iter([1,2,3])
-            .seqMap(function() { return iter([]); })
+            .flatMap(function() { return iter([]); })
             .toArray();
 
         expect(result).toEqual([]);
@@ -22,7 +22,7 @@ describe('seqMap', function() {
 
     it('joins sequences returned from map into single sequence', function() {
         var result = iter.range(0,3)
-            .seqMap(function(n) { return iter.range(0,n); })
+            .flatMap(function(n) { return iter.range(0,n); })
             .toArray();
 
         expect(result).toEqual([
@@ -49,7 +49,7 @@ describe('seqMap', function() {
         };
 
         var it = iter([iter(func1), iter(func2)])
-            .seqMap(function(x) { return x; })
+            .flatMap(function(x) { return x; })
             .iterator();
 
         expect(func1Evaluated).toBe(false);
@@ -74,7 +74,7 @@ describe('seqMap', function() {
             { foo: 1 },
             function() { return (i++ === 0 ? 'ok' : undefined); }
         ])
-        .seqMap(function(x) { return x; })
+        .flatMap(function(x) { return x; })
         .toArray();
 
         expect(result).toEqual([
@@ -88,7 +88,7 @@ describe('seqMap', function() {
         var context = {}, $this;
 
         iter([1])
-            .seqMap(function() {
+            .flatMap(function() {
                 $this = this;
                 return iter.empty();
             }, context)
@@ -99,7 +99,7 @@ describe('seqMap', function() {
 
     it('supports quick as map function', function() {
         var result = iter([1,2])
-            .seqMap('iter.range(0,$+1)')
+            .flatMap('iter.range(0,$+1)')
             .toArray();
 
         expect(result).toEqual([

@@ -1575,30 +1575,44 @@
         }
     };
 
-    Iterable.prototype.contains = function(value) {
-        if (!arguments.length) {
-            throw new Error('iter.contains: missing argument "value"');
-        }
+    Iterable.prototype.contains = (function() {
+        var DEFAULT_EQUALITY_COMPARER = function(element, value) {
+            return (element === value);
+        };
 
-        var it = this.iterator();
+        return function(value, comparer, context) {
+            var options = {
+                func: (comparer === undefined ? DEFAULT_EQUALITY_COMPARER : comparer),
+                context: context,
 
-        while (it.next()) {
-            if (it.current() === value) {
-                return true;
-            }
-        }
+                funcArgName: 'comparer',
+                methodName: 'contains',
 
-        return false;
-    };
+                iterable: this 
+            };
 
-    Iterable.prototype.seqMap = (function() {
-        var SeqMapIterator = function(sequences) {
+            return standardFunction(options, function(comparer, iterable) {
+                var it = iterable.iterator();
+
+                while (it.next()) {
+                    if (comparer(it.current(), value)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            });
+        };
+    })();
+
+    Iterable.prototype.flatMap = (function() {
+        var FlatMapIterator = function(sequences) {
             this.$$sequences = sequences;
             this.$$currentSequence = null;
             this.$$end = false;
         };
 
-        SeqMapIterator.prototype.next = function() {
+        FlatMapIterator.prototype.next = function() {
             if (this.$$end) {
                 return false;
             }
@@ -1619,7 +1633,7 @@
             return true;
         };
 
-        SeqMapIterator.prototype.current = function() {
+        FlatMapIterator.prototype.current = function() {
             if (this.$$current) {
                 return this.$$current.value;
             }
@@ -1628,12 +1642,12 @@
             }
         };
 
-        return function(map, $this) {
-            var sequences = this.map(map, $this);
+        return function(projection, context) {
+            var sequences = this.map(projection, context);
 
             return new Iterable(function() {
                 var sequencesIterator = sequences.iterator();
-                return new SeqMapIterator(sequencesIterator);
+                return new FlatMapIterator(sequencesIterator);
             });
         };
     })();
