@@ -16,4 +16,4 @@ var onlyEven = iter.range(0, 100)
 ```
 Here `'$ % 2 === 0'` is a _quick_ expression (_quicks_ are compiled using `eval` and they doesn't support closures).
 
-Full library documentation is contained on [wiki pages](wiki).
+Full library documentation is contained on [wiki pages](https://github.com/marcin-chwedczuk/iter.js/wiki).
