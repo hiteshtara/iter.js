@@ -729,7 +729,9 @@ Returns new sequence containing sorted elements of the original sequence. Elemen
 
  _Warning: `Array.sort` is not guaranted to perform stable sort._
 
-`comparer` may not be specified when sorting sequences of numbers or strings.
+`comparer` may not be specified when sorting sequences of strings.
+
+_Warning: `Array.sort` sorts numbers by first converting them to strings so 11 is less than 2, to properly sort array of numbers specify custom comparer (see example #1 and #2 below)._
 
 ```javascript
 var data1 = [1, 9, 2, 23, 1, 2, 11];
@@ -740,25 +742,33 @@ console.log(sorted1);
 //Output:
 // [1, 1, 11, 2, 2, 23, 9]
 
-var data2 = ['foo', 'aazb', 'zzz', 'bar'];
+var data2 = [1, 9, 2, 23, 1, 2, 11];
 var sorted2 = iter(data2)
-	.sort()
+	.sort(function(l,r) { return l-r; })
     .toArray();
 console.log(sorted2);
 //Output:
+// [1, 1, 2, 2, 9, 11, 23]
+
+var data3 = ['foo', 'aazb', 'zzz', 'bar'];
+var sorted3 = iter(data3)
+	.sort()
+    .toArray();
+console.log(sorted3);
+//Output:
 // ["aazb", "bar", "foo", "zzz"]
 
-var data3 = [
+var data4 = [
     { name: 'jon doe', priority: 3 },
     { name: 'miyako night', priority: 100 },
     { name: 'maya culpa', priority: 2 }
 ];
-var sorted3 = iter(data3)
+var sorted4 = iter(data4)
 	// we want to sort in _descending_ order
 	.sort(function(left, right) { return -(left.priority - right.priority); })
     .map(function(patient) { return patient.name; })
     .toArray();
-console.log(sorted3);
+console.log(sorted4);
 //Output:
 // ["miyako night", "jon doe", "maya culpa"]
 ```
@@ -927,6 +937,283 @@ var result4 = iter(data)
 console.log(result4);
 //Output:
 // 101
+```
+
+### `Iterable.prototype.groupBy(selector1[, ... selectorN])`
+<dl>
+  <dt><strong>selector*(element)</strong></dt>
+  <dd>Functions that returns _primitive values_ for each sequence elements.</dd>
+</dl>
+
+Groups sequence elements according to values returned by `selector1` ... `selectorN` functions. `selector*` functions must return JavaScript [primitive value](https://developer.mozilla.org/en-US/docs/Glossary/Primitive).
+
+For example if we want to group people by sex and by whenever they are at least 25 years old we could write:
+```javascript
+var people = [
+	{ name: 'jon', sex: 'male', age: 30 },
+    { name: 'marry', sex: 'female', age: 28 },
+    { name: 'karen', sex: 'female', age: 16 },
+    { name: 'itzki', sex: 'male', age: 33 }
+];
+
+var result = iter(people)
+	.groupBy(
+    	function(p) { return p.sex; },
+        function(p) { return (p.age < 25 ? 'under25' : 'atLeast25'); });
+```
+Each group is returned as sequence object, that additionaly has `key` property containing group key (in our case this will be an array of two elements contining value of `sex` property, and either `'under25'` or `'atLeast25'` string.) In general `key` property is an array that contains values returned by `selector*` functions, in case when there is only single selector function, `key` is value returned by that selector (it is not wrapped in array).
+
+_Warning: No order of groups is guaranted. Use `orderBy` or `sort` to force specific order._
+
+Coming back to our example, we can use `Iterable` methods to access group elements:
+```javascript
+result.forEach(function(group) {
+	console.log('group key: ' + group.key.join(', '));
+
+	// use any Iterable method
+    group.forEach(function(groupElement) {
+    	console.log('\tgroup element: ' + JSON.stringify(groupElement.name));
+    });
+});
+//Output:
+// group key: male, atLeast25
+// 	 group element: "jon"
+// 	 group element: "itzki"
+// group key: female, atLeast25
+// 	 group element: "marry"
+// group key: female, under25
+// 	 group element: "karen"
+```
+`groupBy` supports _quick_ expressions, so instead of
+```javascript
+var result = iter(people)
+	.groupBy(
+    	function(p) { return p.sex; },
+        function(p) { return (p.age < 25 ? 'under25' : 'atLeast25'); });
+```
+we could write
+```javascript
+var result = iter(people)
+	.groupBy('$.sex', '($.age < 25 ? "under25" : "atLeast25")');
+```
+(in _quick_ `$` contains current element value).
+
+Examples of using `groupBy`:
+```javascript
+var people = [
+	{ name: 'jon', sex: 'male', age: 30 },
+    { name: 'marry', sex: 'female', age: 28 },
+    { name: 'karen', sex: 'female', age: 16 },
+    { name: 'itzki', sex: 'male', age: 33 }
+];
+
+// 1. Compute average age for males and females in peoples
+iter(people)
+	.groupBy('$.sex')
+    .map(function(group) {
+    	return {
+        	// single selector - key is just a value of sex property
+        	sex: group.key,
+            avgAge: group.avg('$.age')
+        }
+    })
+    .forEach(function(x) {
+    	console.log('average age for ' + x.sex + ' is ' + x.avgAge + ' years');
+    });
+//Output:
+// average age for male is 31.5 years
+// average age for female is 22 years
+
+// 2. Compute number of people per age range
+iter(people)
+	.groupBy(function(x) { return Math.floor(x.age / 10); })
+    .forEach(function(ageGroup) {
+    	console.log('age group: ' + (ageGroup.key*10) + ' - ' + (ageGroup.key*10 + 9));
+        console.log('\tcount: ' + ageGroup.count());
+    });
+//Output:
+//age group: 30 - 39
+// 	count: 2
+// age group: 20 - 29
+// 	count: 1
+// age group: 10 - 19
+// 	count: 1
+```
+
+### `Iterable.prototype.random()`
+Returns random element from sequence using [uniform distribution](http://en.wikipedia.org/wiki/Uniform_distribution_%28discrete%29) (all elements all equaly likely to be chosen). If sequence is empty throws exception.
+
+```javascript
+var random = iter([1,2,3,4]).random();
+console.log(random);
+//Output:
+// 3
+
+var random = iter([]).random();
+Error: iter.random: sequence contains no elements.
+```
+
+### `Iterable.prototype.orderBy(selector1[, ... selectorN])`
+<dl>
+  <dt><strong>selector*</strong></dt>
+  <dd>Expression of form `property [@comparer] [@asc|@desc]` that describes property accessor, optional comparer to use when comparing property values and optional sort order. Property accessor should return only JavaScript <a href="https://developer.mozilla.org/en-US/docs/Glossary/Primitive">primitive values</a>.</dd>
+</dl>
+
+Returns new sequence of elements that is sorted version of the original sequence. Returned sequence elements are sorted according to conditions specified by `selector`s.
+
+_Warning: Internally sorting is performed by invoking `Array.sort` which doesn't guarantee stable sort._
+
+For example to sort array of numbers we could write:
+```javascript
+var data = [5, 1, 3, 7, 2, 24, 3, 4];
+var sorted1 = iter(data)
+	.orderBy('$')
+    .toArray();
+console.log(sorted1);
+//Output:
+// [1, 2, 3, 3, 4, 5, 7, 24]
+```
+`$` selector means that we want to use entire object as sort key (this is possible with numbers and strings).
+
+We can sort numbers in descending order by appending `@desc` to `$` selector:
+```javascript
+var sorted1 = iter(data)
+	.orderBy('$ @desc')
+    .toArray();
+console.log(sorted1);
+//Output:
+// [24, 7, 5, 4, 3, 3, 2, 1]
+```
+We can also sort objects using values of thier properties:
+```javascript
+var people = [
+	{ name: 'jon',    sex: 'male',    age: 30 },
+    { name: 'marry',  sex: 'female',  age: 24 },
+    { name: 'karen',  sex: 'female',  age: 30 },
+    { name: 'itzki',  sex: 'male',    age: 33 },
+    { name: 'damian', sex: 'male',    age: 24 },
+    { name: 'iwan',   sex: 'male',    age: 13 }
+];
+
+// sort by age descending then by sex
+var result1 = iter(people)
+	.orderBy('$.age @desc', '$.sex')
+    .map(function(x) { return x.name; })
+    .toArray();
+console.log(result1);
+//Output:
+// ["itzki", "karen", "jon", "marry", "damian", "iwan"]
+```
+In general `$` represents current element in the `selector`. We can access object properties using `$.propertyName` or `$["propertyName"]` syntax. We can also use expressions like 
+```javascript
+.orderBy('($.age==24 ? 999: $.age) @desc', '$.sex')
+```
+in place of properties.
+
+When comparing strings we can use `@localeCompare` comparer to specify that comparision should be performed using [String.prototype.localeCompare](https://developer.mozilla.org/en-US/docs/Glossary/Primitive) function:
+```javascript
+var names = ['a', 'A', 'ą', 'Ą', 'b', 'B'];
+
+console.log(
+	iter(names)
+    	.orderBy('$ @asc')
+        .toArray());
+//Output:
+// ["A", "B", "a", "b", "Ą", "ą"]
+        
+console.log(
+	iter(names)
+    	.orderBy('$ @localeCompare @asc')
+        .toArray());
+//Output:
+// ["a", "A", "ą", "Ą", "b", "B"]
+```
+
+### `Iterable.prototype.one([predicate[, context]])`
+<dl>
+  <dt><strong>predicate(element, index)</strong></dt>
+  <dd>Optional. Function that returns either <code>true</code> or <code>false</code> for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+
+  <dt><strong>context</strong></dt>
+  <dd>Optional. Value to use as <code>this</code> when executing <code>predicate</code>.</dd>
+</dl>
+
+If sequence contains exactly one element then `one` will return that element. If sequence is either empty or contains more than one element then `one` will throw exception.
+
+If `predicate` is specified and there is exactly one element in sequence that fullfils the `predicate` then `one` will return that element. If sequence is empty, or no element fullfils the `predicate` or there is more than one element that fullfils the `predicate` then `one` will throw exception.
+
+```javascript
+var result1 = iter(['foo']).one();
+console.log(result1);
+//Output:
+// foo
+
+iter([]).one();
+Error: iter.one: sequence contains no elements.
+
+iter([1, 2, 3]).one();
+Error: iter.one: sequence contains more than one matching element.
+
+var result2 = iter([1, 34, 2, 201, 3, 43])
+	.one(function(x) { return x > 100; });
+console.log(result2);
+//Output:
+// 201
+
+iter([1, 34, 2, 201, 3, 43])
+	.one(function(x) { return x > 1000; });
+Error: iter.one: sequence contains no elements satisfying the predicate.
+
+iter([1, 34, 2, 201, 3, 43])
+	.one(function(x) { return x > 40; });
+Error: iter.one: sequence contains more than one matching element.
+```
+
+### `Iterable.prototype.oneOrDefault(defaultValue, [predicate[, context]])`
+<dl>
+  <dt><strong>defaultValue</strong></dt>
+  <dd>Value to return if sequence is empty or no element fulfills the <code>predicate</code>.</dd>
+  
+  <dt><strong>predicate(element, index)</strong></dt>
+  <dd>Optional. Function that returns either <code>true</code> or <code>false</code> for every sequence element. It takes two arguments: the current element and zero based index of the current element in the sequence.</dd>
+
+  <dt><strong>context</strong></dt>
+  <dd>Optional. Value to use as <code>this</code> when executing <code>predicate</code>.</dd>
+</dl>
+
+If sequence contains exactly one element then `one` will return that element. If sequence is empty then `one` will return `defaultValue`, otherwise it will throw exception.
+
+If `predicate` is specified and there is exactly one element in sequence that fullfils the `predicate` then `one` will return that element. If sequence is empty, or no element fullfils the `predicate` then `one` will return `defaultValue`, otherwise it will throw exception.
+
+```javascript
+var result1 = iter(['foo']).oneOrDefault('default');
+console.log(result1);
+//Output:
+// foo
+
+var result2 = iter([]).oneOrDefault('default');
+console.log(result2);
+//Output:
+// default
+
+iter([1, 2, 3]).oneOrDefault('default');
+Error: iter.oneOrDefault: sequence contains more than one matching element.
+
+var result3 = iter([1, 34, 2, 201, 3, 43])
+	.oneOrDefault(666, function(x) { return x > 100; });
+console.log(result3);
+//Output:
+// 201
+
+var result4 = iter([1, 34, 2, 201, 3, 43])
+	.oneOrDefault(666, function(x) { return x > 1000; });
+console.log(result4);
+//Output:
+// 666
+
+iter([1, 34, 2, 201, 3, 43])
+	.oneOrDefault(666, function(x) { return x > 40; });
+Error: iter.oneOrDefault: sequence contains more than one matching element.
 ```
 
 ## Helper methods

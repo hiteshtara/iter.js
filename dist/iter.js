@@ -1190,10 +1190,6 @@
         };
     })(Iterable);
 
-    // groupby('$.basicTypeProperty' number, string, boolean)
-    // groupby([array of basic properties])
-    // groupby('$.age') groupby('$.age', '$.firstname', '$.lastname')
-    // groupby('Math.floor($index/5)')
     Iterable.prototype.groupBy = (function() {
         
         var addValueToGrouping = function(groupping, key, value) {
@@ -1500,18 +1496,18 @@
     })();
 
     (function(Iterable) {
-        var internalOne = function(iterable, funcName, predOpt, $this) {
+        var internalOne = function(iterable, funcName, predicate, context) {
             var options = {
-                func: (predOpt === undefined ? ALWAYS_TRUE_PREDICATE : predOpt),
-                context: $this,
+                func: (predicate === undefined ? ALWAYS_TRUE_PREDICATE : predicate),
+                context: context,
 
-                funcArgName: 'predOpt',
+                funcArgName: 'predicate',
                 methodName: funcName,
 
                 iterable: iterable
             };
 
-            return standardFunction(options, function(pred, iterable) {
+            return standardFunction(options, function(predicate, iterable) {
                 var it = iterable.iterator();
                 var index = -1;
                 var one = null;
@@ -1520,7 +1516,7 @@
                     index += 1;
                     var curr = it.current();
 
-                    if (pred(curr, index)) {
+                    if (predicate(curr, index)) {
                         if (one) {
                             throw new Error('iter.' + funcName + 
                                             ': sequence contains more than one matching element.');
@@ -1535,13 +1531,13 @@
             });
         };
 
-        Iterable.prototype.one = function(predOpt, $this) {
-            var result = internalOne(this, 'one', predOpt, $this);
+        Iterable.prototype.one = function(predicate, context) {
+            var result = internalOne(this, 'one', predicate, context);
 
             if (result) {
                 return result.value;
             }
-            else if (predOpt) {
+            else if (predicate) {
                 throw new Error('iter.one: sequence contains no elements satisfying the predicate.');
             }
             else {
@@ -1549,8 +1545,8 @@
             }
         };
 
-        Iterable.prototype.oneOrDefault = function(defaultValue, predOpt, $this) {
-            var result = internalOne(this, 'oneOrDefault', predOpt, $this);
+        Iterable.prototype.oneOrDefault = function(defaultValue, predicate, context) {
+            var result = internalOne(this, 'oneOrDefault', predicate, context);
 
             if (result) {
                 return result.value;
