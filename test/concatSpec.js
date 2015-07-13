@@ -34,7 +34,9 @@ describe('concat', function() {
         var i = 0;
 
         var result = iter.concat(
-            function() { return (++i < 3 ? i : undefined); },
+            function() { 
+                return function() { return (++i < 3 ? i : undefined); }; 
+            },
             ['foo', 'bar'],
             { nyu: 1 })
         .toArray();

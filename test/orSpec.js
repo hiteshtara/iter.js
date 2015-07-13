@@ -26,7 +26,7 @@ describe("or", function() {
         var data = [null, 0, 7, null, 0];
         var iterations = 0;
 
-        iter(function() { iterations += 1; return data.shift(); }).or();
+        iter.stateless(function() { iterations += 1; return data.shift(); }).or();
 
         expect(iterations).toBe(3);
     });

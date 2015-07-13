@@ -62,7 +62,7 @@ describe("every", function() {
         var data = [1,2,3,null,7,0];
         var iterations = 0;
 
-        iter(function() { iterations += 1; return data.shift(); })
+        iter.stateless(function() { iterations += 1; return data.shift(); })
             .every();
 
         expect(iterations).toBe(4);

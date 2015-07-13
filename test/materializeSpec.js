@@ -13,7 +13,7 @@ describe('materialize', function() {
             return (i < data.length ? data[i++] : undefined);   
         };
 
-        var materialized = iter(generator)
+        var materialized = iter.stateless(generator)
             .materialize();
         
         expect(callCount).toBe(4);

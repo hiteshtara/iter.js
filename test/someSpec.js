@@ -53,7 +53,7 @@ describe("some", function() {
         var iterations = 0;
         var data = [null, 0, 3, false, 33];
 
-        iter(function() { iterations += 1; return data.shift(); })
+        iter.stateless(function() { iterations += 1; return data.shift(); })
             .some();
         
         expect(iterations).toBe(3);

@@ -26,7 +26,7 @@ describe("and", function() {
         var data = [1,2,false,4,5];
         var iterations = 0;
 
-        iter(function() { iterations += 1; return data.shift(); }).and();
+        iter.stateless(function() { iterations += 1; return data.shift(); }).and();
     
         expect(iterations).toBe(3);
     });

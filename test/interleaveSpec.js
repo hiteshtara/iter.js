@@ -63,7 +63,9 @@ describe('interleave', function() {
 
         var result = iter.interleave(
             [1,2,3],
-            function() { return (++i < 4 ? i : undefined); },
+            function() {
+                return function() { return (++i < 4 ? i : undefined); };
+            },
             { foo: 1 }
         )
         .toArray();

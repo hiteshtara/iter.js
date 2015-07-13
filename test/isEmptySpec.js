@@ -19,7 +19,7 @@ describe('isEmpty', function() {
     it('evaluates at most single sequence element', function() {
         var evaluatedElementsCount = 0;
 
-        iter(function() {
+        iter.stateless(function() {
             evaluatedElementsCount++;
             return (evaluatedElementsCount < 100 ? 'ok' : undefined);
         }).isEmpty();

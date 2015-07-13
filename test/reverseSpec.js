@@ -35,7 +35,7 @@ describe('reverse', function() {
             return (i < 10 ? i++ : undefined);
         };
 
-        var result = iter(generator)
+        var result = iter.stateless(generator)
             .reverse()
             .toArray();
 

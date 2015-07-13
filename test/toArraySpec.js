@@ -11,7 +11,7 @@ describe("toArray", function() {
 
     it("given sequence returns array containing each sequence element", function() {
         var i = 0;
-        var iterable = iter(function() { i++; return (i < 5) ? i : undefined; });
+        var iterable = iter.stateless(function() { i++; return (i < 5) ? i : undefined; });
 
         expect(iterable.toArray()).toEqual([1,2,3,4]);
     });

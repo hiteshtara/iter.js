@@ -28,8 +28,12 @@ describe("iter library entry point", function() {
         expect(iter({ foo: 1, bar: 2 })).toBeDefined();
     });
 
-    it("should return iterable given function", function() {
-        expect(iter(function() {})).toBeDefined();
+    it("should return iterable given generator function", function() {
+        var iterable = iter(function() {
+            return function() { };
+        });
+
+        expect(iterable).toBeDefined();
     });
 });
 

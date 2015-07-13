@@ -1665,12 +1665,24 @@
         }
         else if(isFunction(obj)) {
             return new Iterable(function() {
-                return new FunctionIterator(obj);
+                var generatorFunction = obj();
+                return new FunctionIterator(generatorFunction);
             });
         }
         else {
             throw new Error("iter: Only arrays, object and functions can be iterated.");
         }
+    };
+
+    iter.stateless = function(func) {
+        if (!isFunction(func)) {
+            throw new Error('iter.stateless: Invalid argument: ' + 
+                            'passed argument should be function.');
+        }
+
+        return iter(function() {
+            return func;
+        });
     };
 
     var toIterable = function(obj) {
@@ -1729,29 +1741,36 @@
             throw new Error('iter.range: step must be finite number.');
         }
 
-        var index = 0;
         if (step >= 0) {
             return iter(function() {
-                var next = from + index * step;
-                if (next >= to) {
-                    return undefined;
-                }
-                else {
-                    index += 1;
-                    return next;
-                }
+                var index = 0;
+
+                return function() {
+                    var next = from + index * step;
+                    if (next >= to) {
+                        return undefined;
+                    }
+                    else {
+                        index += 1;
+                        return next;
+                    }
+                };
             });
         }
         else {
             return iter(function() {
-                var next = from + index * step;
-                if (next <= to) {
-                    return undefined;
-                }
-                else {
-                    index += 1;
-                    return next;
-                }
+                var index = 0;
+
+                return function() {
+                    var next = from + index * step;
+                    if (next <= to) {
+                        return undefined;
+                    }
+                    else {
+                        index += 1;
+                        return next;
+                    }
+                };
             });
         }
     };
@@ -1801,8 +1820,12 @@
     })();
 
     var EMPTY_ITERATOR_FUNCTION = function() { return undefined; };
+    var EMPTY_ITERATOR_FUNCTION_FACTORY = function() {
+        return EMPTY_ITERATOR_FUNCTION;
+    };
+
     iter.empty = function() {
-        return iter(EMPTY_ITERATOR_FUNCTION);
+        return iter(EMPTY_ITERATOR_FUNCTION_FACTORY);
     };
 
     // usage: iter.quick('$ > 10')

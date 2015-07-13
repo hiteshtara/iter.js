@@ -51,18 +51,29 @@ describe('zipWith', function() {
         var iterable = iter([1,2]);
 
         var resultArray = iter
-            .zipWith(iterable, ['a','b'], function(n,l) { return n + l; })
+            .zipWith(
+                iterable, 
+                ['a','b'], 
+                function(n,l) { return n + l; })
             .toArray();
 
         var resultObj = iter
-            .zipWith({ foo: 1 }, iterable, function(kv,n) { return { k: kv.key, n: n }; })
+            .zipWith(
+                { foo: 1 }, 
+                iterable, 
+                function(kv,n) { return { k: kv.key, n: n }; })
             .toArray();
 
-        var i = 0;
         var resultFunc = iter
-            .zipWith(function() { return (++i < 3 ? i : undefined); }, iterable, function(l,r) {
-                return l + r;
-            })
+            .zipWith(
+                function() {
+                    var i = 0;
+                    return function() { return (++i < 3 ? i : undefined); };
+                },
+                iterable, 
+                function(l,r) {
+                    return l + r;
+                })
             .toArray();
 
         expect(resultArray).toEqual(['1a', '2b']);

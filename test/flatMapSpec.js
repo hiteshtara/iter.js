@@ -48,7 +48,7 @@ describe('flatMap', function() {
             }
         };
 
-        var it = iter([iter(func1), iter(func2)])
+        var it = iter([iter.stateless(func1), iter.stateless(func2)])
             .flatMap(function(x) { return x; })
             .iterator();
 
@@ -72,7 +72,9 @@ describe('flatMap', function() {
         var result = iter([
             ['foo'],
             { foo: 1 },
-            function() { return (i++ === 0 ? 'ok' : undefined); }
+            function() { 
+                return function() { return (i++ === 0 ? 'ok' : undefined); };
+            }
         ])
         .flatMap(function(x) { return x; })
         .toArray();

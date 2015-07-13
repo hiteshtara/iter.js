@@ -70,7 +70,9 @@ describe('cross', function() {
         var resultArrayFunction = iter
             .cross(
                 [1],
-                function() { return (i++ === 0 ? 'ok' : undefined); },
+                function() { 
+                    return function() { return (i++ === 0 ? 'ok' : undefined); };
+                },
                 mergeFunc)
             .toArray();
 
@@ -88,7 +90,9 @@ describe('cross', function() {
             // cross restars right sequence for each left seq element
             // function returns 'ok', undef, 'ok', undef, 'ok', undef
             // to allow 3 restarts
-            function() { return ((i++ % 2) === 0 ? 'ok' : undefined); },
+            function() { 
+                return function() { return ((i++ % 2) === 0 ? 'ok' : undefined); };
+            },
             mergeFunc)
         .toArray();
 
